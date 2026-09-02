@@ -1,0 +1,36 @@
+#include <iostream>
+#include <vector>
+#include <random>
+#include <ctime>
+#include <algorithm>
+#include <iomanip>
+#include <fstream>
+
+#include "Board.h"
+
+int main()
+{
+    Board board{5, 9};
+
+    std::ofstream file("layouts.csv");
+
+    if (!file.is_open())
+    {
+        std::cerr
+            << "Failed to open CSV file.\n";
+
+        return 1;
+    }
+
+    for (int i = 0; i < 100; i++)
+    {
+        file << "Layout " << i + 1 << "\n";
+        board.LevelGenerate(10, 4, 1);
+        file << board;
+    }
+
+    //Ali Push
+
+    file.close();
+    return 0;
+}
