@@ -2,19 +2,19 @@
 
 #include <iostream>
 
-class Region;
+class Rectangle;
 
 class Cell
 {
 private:
 	int  x, y;
 
-	Region* region;
+	Rectangle* rectangle;
 
 	Cell* bottom;
 	Cell* left;
 public:
-	Cell(int X, int Y, Region* Region, Cell* Left = nullptr, Cell* Bottom = nullptr);
+	Cell(int X, int Y, Rectangle* Rectangle, Cell* Left = nullptr, Cell* Bottom = nullptr);
 
 	friend std::ostream& operator<<(std::ostream&, const Cell&);
 
@@ -23,9 +23,11 @@ public:
 	int X() const;
 	int Y() const;
 
-	Region* LeftRegion() const;
+	Rectangle* LeftRectangle() const;
 
-	Region* BottomRegion() const;
+	Rectangle* BottomRectangle() const;
 
-	void ChangeRegion(Region* const NewRegion);
+	Rectangle* GetRectangle() const;
+
+	void ChangeRectangle(Rectangle* const NewRectangle);
 };

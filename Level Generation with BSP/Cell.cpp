@@ -1,16 +1,16 @@
 #include "Cell.h"
-#include "Region.h"
+#include "Rectangle.h"
 
-Cell::Cell(int X, int Y, Region* Region, Cell* Left, Cell* Bottom) :
+Cell::Cell(int X, int Y, Rectangle* Rectangle, Cell* Left, Cell* Bottom) :
 	x{ X }, y{ Y }, left{ Left }, bottom{ Bottom }
 {
-	region = Region;
-	region->AddCell(this);
+	rectangle = Rectangle;
+	rectangle->AddCell(this);
 }
 
 std::ostream& operator<<(std::ostream& Output, const Cell& cell)
 {
-	Output << *(cell.region);
+	Output << *(cell.rectangle);
 	return Output;
 }
 
@@ -20,20 +20,25 @@ bool Cell::operator<(const Cell& neighbor) const
 	return x < neighbor.x;
 }
 
-void Cell::ChangeRegion(Region* const NewRegion) {
-	region->ExitCell(this);
-	region = NewRegion;
-	region->AddCell(this);
+void Cell::ChangeRectangle(Rectangle* const NewRectangle) {
+	rectangle->ExitCell(this);
+	rectangle = NewRectangle;
+	rectangle->AddCell(this);
 }
 
-Region* Cell::BottomRegion() const
+Rectangle* Cell::BottomRectangle() const
 {
-	return bottom == nullptr ? nullptr : bottom->region;
+	return bottom == nullptr ? nullptr : bottom->rectangle;
 }
 
-Region* Cell::LeftRegion() const
+Rectangle* Cell::LeftRectangle() const
 {
-	return left == nullptr ? nullptr : left->region;
+	return left == nullptr ? nullptr : left->rectangle;
+}
+
+Rectangle* Cell::GetRectangle() const 
+{
+	return rectangle;
 }
 
 int Cell::X() const { return x; }

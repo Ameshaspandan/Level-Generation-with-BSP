@@ -1,48 +1,24 @@
 #pragma once
 
 #include <vector>
-#include <iostream>
-#include <algorithm>
 
-class Cell;
+#include "Rectangle.h"
 
 class Region
 {
+	using Convex = std::vector<Rectangle*>;
 private:
-	int colorNumber;
-	int mechanicNumber;
-
-	std::vector<Cell*> cells;
-	std::vector<Region*> neighbers;
-
-	inline void sortCells();
-
+	Convex convex;
 public:
 	Region();
+	~Region();
 
-	friend std::ostream& operator<<(std::ostream&, const Region&);
+	const Convex& GetConvex() const;
 
-	bool operator==(const Region& region) const;
+	void AddRecangle(Rectangle*);
+	bool RemoveRecangle(Rectangle*);
+	void SetMechanic(int Mechanic);
 
-	bool operator<(const Region&) const;
-
-	int Width() const;
-	int Height() const;
-
-	int CountNeighbors() const;
-
-	int GetMechanic() const;
-	int GetColor() const;
-
-	void ExitCell(Cell* const);
-	void AddCell(Cell* const);
-	void FindNeigbers();
-	Region* GetNeighbor(int) const;
-
-	void SetMechanic(int MechanicNumber);
-	void SetColor(int ColorNumber);
-
-	Cell* const BaseCell() const;
-
-	inline int Area() const;
+	int Area;
 };
+

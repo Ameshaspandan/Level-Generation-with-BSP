@@ -1,121 +1,48 @@
 #include "Region.h"
-#include "Cell.h"
 
-Region::Region() :
-	cells{}, neighbers{}, colorNumber{}, mechanicNumber{}
-{ }
+#include <algorithm>>
 
-void Region::ExitCell(Cell* const cell)
+using Convex = std::vector<Rectangle*>;
+
+Region::Region() : convex{}, Area{}
 {
-	for (int i = 0; i < cells.size(); i++)
+}
+
+Region::~Region()
+{
+	for (auto* rectangle : convex)
 	{
-		if (cells.at(i)->X() == cell->X() && cells.at(i)->Y() == cell->Y()) cells.erase(cells.begin() +  i);
-	}
-	sortCells();
-}
-
-void Region::AddCell(Cell* cell)
-{
-	cells.push_back(cell);
-	sortCells();
-}
-
-std::ostream& operator<<(std::ostream& Output, const Region& region)
-{
-	Output << region.mechanicNumber;
-	return Output;
-}
-
-void Region::FindNeigbers()
-{
-	neighbers.clear();
-
-	for (auto *cell : cells)
-	{
-		Region* neighbor;
-		neighbor = cell->LeftRegion();
-		if (neighbor != nullptr && !(neighbor == this))
-		{
-			if (neighbers.empty() || 
-				std::find(neighbers.begin(), neighbers.end(), neighbor) == neighbers.end())
-			{
-				neighbers.push_back(neighbor);
-			}
-		}
-		neighbor = cell->BottomRegion();
-		if (neighbor != nullptr && !(neighbor == this))
-		{
-			if (neighbers.empty() ||
-				std::find(neighbers.begin(), neighbers.end(), neighbor) == neighbers.end())
-			{
-				neighbers.push_back(neighbor);
-			}
-		}
+		delete rectangle;
 	}
 }
 
-Region* Region::GetNeighbor(int number) const
+const Convex& Region::GetConvex() const
 {
-	return neighbers.at(number);
+	return convex;
 }
 
-int Region::Width() const
+void Region::AddRecangle(Rectangle* rectangle)
 {
-	return cells.at(cells.size() - 1)->X() - cells.at(0)->X() + 1;
+	convex.push_back(rectangle);
+	Area += rectangle->Area();
 }
 
-int Region::Height() const
+bool Region::RemoveRecangle(Rectangle* rectangle)
 {
-	return cells.at(cells.size() - 1)->Y() - cells.at(0)->Y() + 1;
+	auto search = std::find(convex.begin(), convex.end(), rectangle);
+	if (search != convex.end())
+	{
+		convex.erase(search);
+		Area -= rectangle->Area();
+		return true;
+	}
+	return false;
 }
 
-int Region::CountNeighbors() const
+void Region::SetMechanic(int Mechanic)
 {
-	return neighbers.size();
-}
-
-int Region::GetMechanic() const
-{
-	return mechanicNumber;
-}
-
-int Region::GetColor() const
-{
-	return colorNumber;
-}
-
-bool Region::operator<(const Region& region) const
-{
-	return Area() < region.Area();
-}
-
-void Region::sortCells()
-{
-	std::sort(cells.begin(), cells.end(),
-		[](Cell* const cell1,Cell* const cell2)
-		{
-			return *cell1 < *cell2;
-		});
-}
-
-bool Region::operator==(const Region& region) const
-{
-	return mechanicNumber == region.mechanicNumber;
-}
-
-void Region::SetMechanic(int MechanicNumber) {
-	mechanicNumber = MechanicNumber;
-}
-
-void Region::SetColor(int ColorNumber) {
-	colorNumber = ColorNumber;
-}
-
-Cell* const Region::BaseCell() const
-{
-	return cells.at(0);
-}
-
-int Region::Area() const {
-	return cells.size();
+	for (auto* rectangle : convex)
+	{
+		rectangle->SetMechanic(Mechanic);
+	}
 }

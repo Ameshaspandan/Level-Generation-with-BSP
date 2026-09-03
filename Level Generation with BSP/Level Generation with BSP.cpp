@@ -10,7 +10,7 @@
 
 int main()
 {
-    Board board{5, 9};
+    Board board{9, 9};
 
     std::ofstream file("layouts.csv");
 
@@ -22,14 +22,12 @@ int main()
         return 1;
     }
 
-    for (int i = 0; i < 100; i++)
+    for (int i = 0; i < 1000; i++)
     {
         file << "Layout " << i + 1 << "\n";
-        board.LevelGenerate(10, 4, 1);
+        board.LevelGenerate(7, 5);
         file << board;
     }
-
-    //Ali Push
 
     file.close();
     return 0;
