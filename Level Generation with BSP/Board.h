@@ -23,7 +23,7 @@ private:
 	const int largetM1Area = 20;
 
 	void mesh(int RectangleCount);
-	void paint();
+	bool paint(int M1Area, bool M2, bool M3, bool M4, bool M5);
 
 	void rectangleSort()
 	{
@@ -34,10 +34,14 @@ private:
 			});
 	}
 
-	void findColorRectangle();
+	void findRegion();
 	void setColorMechanic(std::vector<Rectangle*>* ColorRectangle, int Mechanic);
 	int getColorColorRectangle(std::vector<Rectangle*>* ColorRectangle);
 	bool touchesBoardEdge(Rectangle* Rectangle);
+
+	bool isM2Candidate(Region* region);
+	bool isM4Candidate(Region* region);
+	bool isM3Candidate(Region* region);
 
 	Cell* const getCell(int X, int Y) const;
 
@@ -78,7 +82,9 @@ public:
 	Board(int Width, int Height);
 	~Board();
 
-	void LevelGenerate(int RectangleCount, int ColorCount);
+	void LevelGenerate(int RectangleCount, int ColorCount, int M1Area, bool M2, bool M3, bool M4, bool M5);
+
+	void TestAllRectangleNeighbors();
 
 	friend std::ostream& operator<<(std::ostream&, const Board&);
 };

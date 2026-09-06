@@ -11,6 +11,8 @@ class Region
 	int area;
 private:
 	Convex convex;
+
+	bool isRectangle(std::vector<Cell*> cells);
 public:
 	Region();
 	~Region();
@@ -26,5 +28,7 @@ public:
 	int Size();
 
 	int Area() { return area; };
+
+	bool IsEvenRectangle();
 };
 

@@ -25,7 +25,7 @@ int main()
     for (int i = 0; i < 50; i++)
     {
         file << "Layout " << i + 1 << "\n";
-        board.LevelGenerate(10, 5);
+        board.LevelGenerate(10, 5, 10, true, true, true, false);
         file << board;
     }
 

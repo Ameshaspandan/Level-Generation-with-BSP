@@ -124,7 +124,7 @@ void Board::mesh(int ColorCount)
             }
         }
     }
-    findColorRectangle();
+    findRegion();
 
     int m = 0;
     for (auto* rect : rectangles)
@@ -133,7 +133,7 @@ void Board::mesh(int ColorCount)
     }
 }
 
-void Board::findColorRectangle()
+void Board::findRegion()
 {
     // Clear previous color groups
     for (auto* region : regions)
@@ -157,6 +157,7 @@ void Board::findColorRectangle()
             if (region->GetColor() == rectangle->GetColor())
             {
                 region->AddRecangle(rectangle);
+                rectangle->SetRegion(region);
                 found = true;
                 break;
             }
@@ -167,7 +168,7 @@ void Board::findColorRectangle()
         {
             auto* newRegion = new Region();
             newRegion->AddRecangle(rectangle);
-
+            rectangle->SetRegion(newRegion);
             regions.push_back(newRegion);
         }
     }
@@ -201,12 +202,377 @@ bool Board::touchesBoardEdge(Rectangle* Rectangle)
         bottom == height;
 }
 
-void Board::paint()
+bool Board::paint(int M1Area, bool M2, bool M3, bool M4, bool M5)
 {
-   
+    for (auto* region : regions)
+    {
+        region->SetMechanic(-1);
+    }
+
+    std::vector<int> m{ 0, 1, 2, 3, 4, 5 };
+    std::vector<Region*> availableRegions{ regions };
+
+    // ------------------------------------------------
+    // m0
+    // ------------------------------------------------
+
+    if (availableRegions.empty())
+        return false;
+
+    int smallestArea = availableRegions.at(0)->Area();
+    int indexM0 = 0;
+
+    for (int i = 1; i < static_cast<int>(availableRegions.size()); i++)
+    {
+        if (availableRegions.at(i)->Area() < smallestArea)
+        {
+            indexM0 = i;
+            smallestArea = availableRegions.at(i)->Area();
+        }
+    }
+
+    availableRegions.at(indexM0)->SetMechanic(m.at(0));
+
+    availableRegions.erase(
+        availableRegions.begin() + indexM0
+    );
+
+
+    // ------------------------------------------------
+    // m1
+    // ------------------------------------------------
+
+    int m1Area = 0;
+
+    while (m1Area < M1Area)
+    {
+        std::vector<Region*> m1Candidates;
+
+        for (auto* region : availableRegions)
+        {
+            bool valid = true;
+
+            for (auto* rectangle : region->GetConvex())
+            {
+                for (int i = 0;
+                    i < rectangle->CountTopNeighbors();
+                    i++)
+                {
+                    Rectangle* neighbor =
+                        rectangle->GetTopNeighbor(i);
+
+                    // Ignore rectangles belonging
+                    // to the same region.
+                    if (neighbor->GetRegion() == region)
+                        continue;
+
+                    int mechanic =
+                        neighbor->GetMechanic();
+
+                    // Existing external top neighbors
+                    // must be m0 or m1.
+                    if (mechanic != m.at(0) &&
+                        mechanic != m.at(1))
+                    {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                if (!valid)
+                    break;
+            }
+
+            if (valid)
+            {
+                m1Candidates.push_back(region);
+            }
+        }
+
+        if (m1Candidates.empty())
+            return false;
+
+        int candidateIndex =
+            randomInt(
+                0,
+                static_cast<int>(m1Candidates.size()) - 1
+            );
+
+        Region* selectedRegion =
+            m1Candidates.at(candidateIndex);
+
+        selectedRegion->SetMechanic(m.at(1));
+
+        m1Area += selectedRegion->Area();
+
+        auto it = std::find(
+            availableRegions.begin(),
+            availableRegions.end(),
+            selectedRegion
+        );
+
+        if (it != availableRegions.end())
+        {
+            availableRegions.erase(it);
+        }
+    }
+
+
+    // ------------------------------------------------
+    // m2 / m3 / m4 / m5 candidates
+    // ------------------------------------------------
+
+    std::vector<Region*> m2Candidates;
+    std::vector<Region*> m3Candidates;
+    std::vector<Region*> m4Candidates;
+    std::vector<Region*> m5Candidates;
+
+    int countSelectedMechanics = 0;
+
+
+    // m2 can use every remaining region
+    if (M2)
+    {
+        countSelectedMechanics++;
+
+        for (auto* region : availableRegions)
+        {
+            if (isM2Candidate(region))
+            {
+                m2Candidates.push_back(region);
+            }
+        }
+    }
+
+
+    // m3 can use every remaining region
+    if (M3)
+    {
+        m3Candidates.clear();
+
+        for (auto* candidate : availableRegions)
+        {
+            if (candidate->GetMechanic() != -1)
+                continue;
+
+            if (isM3Candidate(candidate))
+            {
+                m3Candidates.push_back(candidate);
+            }
+        }
+    }
+
+
+    // m4 can use every remaining region
+    if (M4)
+    {
+        countSelectedMechanics++;
+
+        for (auto* region : availableRegions)
+        {
+            if (isM4Candidate(region))
+            {
+                m4Candidates.push_back(region);
+            }
+        }
+    }
+
+
+    // m5 only accepts even rectangular regions
+    if (M5)
+    {
+        countSelectedMechanics++;
+
+        for (auto* region : availableRegions)
+        {
+            if (region->IsEvenRectangle())
+            {
+                m5Candidates.push_back(region);
+            }
+        }
+    }
+
+
+    // ------------------------------------------------
+    // Validate candidates
+    // ------------------------------------------------
+
+    if (M2 && m2Candidates.empty())
+        return false;
+
+    if (M3 && m3Candidates.empty())
+        return false;
+
+    if (M4 && m4Candidates.empty())
+        return false;
+
+    if (M5 && m5Candidates.empty())
+        return false;
+
+
+    // No m2-m5 requested.
+    if (countSelectedMechanics == 0)
+    {
+        return availableRegions.empty();
+    }
+
+
+    // ------------------------------------------------
+    // Assign m2 / m3 / m4 / m5
+    // ------------------------------------------------
+
+    std::vector<int> validIndeces;
+    std::vector<int> selected;
+
+    for (auto* region : availableRegions)
+    {
+        validIndeces.clear();
+
+        if (selected.size() ==
+            static_cast<size_t>(countSelectedMechanics))
+        {
+            selected.clear();
+        }
+
+
+        // ----------------
+        // m5
+        // ----------------
+
+        if (M5 &&
+            std::find(
+                selected.begin(),
+                selected.end(),
+                m.at(5)
+            ) == selected.end() &&
+            std::find(
+                m5Candidates.begin(),
+                m5Candidates.end(),
+                region
+            ) != m5Candidates.end())
+        {
+            validIndeces.push_back(m.at(5));
+        }
+
+
+        // ----------------
+        // m2
+        // ----------------
+
+        if (M2 &&
+            std::find(
+                selected.begin(),
+                selected.end(),
+                m.at(2)
+            ) == selected.end() &&
+            std::find(
+                m2Candidates.begin(),
+                m2Candidates.end(),
+                region
+            ) != m2Candidates.end())
+        {
+            validIndeces.push_back(m.at(2));
+        }
+
+
+        // ----------------
+        // m3
+        // ----------------
+
+        if (M3 &&
+            std::find(
+                selected.begin(),
+                selected.end(),
+                m.at(3)
+            ) == selected.end() &&
+            std::find(
+                m3Candidates.begin(),
+                m3Candidates.end(),
+                region
+            ) != m3Candidates.end())
+        {
+            validIndeces.push_back(m.at(3));
+        }
+
+
+        // ----------------
+        // m4
+        // ----------------
+
+        if (M4 &&
+            std::find(
+                selected.begin(),
+                selected.end(),
+                m.at(4)
+            ) == selected.end() &&
+            std::find(
+                m4Candidates.begin(),
+                m4Candidates.end(),
+                region
+            ) != m4Candidates.end())
+        {
+            validIndeces.push_back(m.at(4));
+        }
+
+
+        // No mechanic can be assigned to this region.
+        if (validIndeces.empty())
+        {
+            return false;
+        }
+
+
+        int index =
+            randomInt(
+                0,
+                static_cast<int>(validIndeces.size()) - 1
+            );
+
+        int selectedMechanic =
+            validIndeces.at(index);
+
+        selected.push_back(selectedMechanic);
+
+        region->SetMechanic(selectedMechanic);
+    }
+
+
+    // ------------------------------------------------
+    // Make sure every enabled mechanic exists
+    // ------------------------------------------------
+
+    bool m2Valid = !M2;
+    bool m3Valid = !M3;
+    bool m4Valid = !M4;
+    bool m5Valid = !M5;
+
+    for (auto* region : regions)
+    {
+        int mechanic =
+            region->GetMechanic();
+
+        if (M2 && mechanic == m.at(2))
+            m2Valid = true;
+
+        if (M3 && mechanic == m.at(3))
+            m3Valid = true;
+
+        if (M4 && mechanic == m.at(4))
+            m4Valid = true;
+
+        if (M5 && mechanic == m.at(5))
+            m5Valid = true;
+    }
+
+
+    return
+        m2Valid &&
+        m3Valid &&
+        m4Valid &&
+        m5Valid;
 }
 
-void Board::LevelGenerate(int RectangleCount, int ColorCount)
+void Board::LevelGenerate(int RectangleCount, int ColorCount, int M1Area, bool M2, bool M3, bool M4, bool M5)
 {
     resetRectangle();
 
@@ -221,20 +587,218 @@ void Board::LevelGenerate(int RectangleCount, int ColorCount)
                 break;
             }
         }
+        for (auto* rectangle : rectangles)
+        {
+            rectangle->FindNeigbers();
+        }
     }
 
     mesh(ColorCount);
 
-    //paint();
+    int i{0};
 
-    //int m1Area = 0;
+    for (; i < tryLimit; i++)
+    {
+        if (paint(M1Area, M2, M3, M4, M5)) break;
+    }
 
-    //for (auto* rectangle : rectangles)
-    //{
-    //    if (rectangle->GetMechanic() == 1)
-    //    {
-    //        m1Area += rectangle->Area();
-    //    }
-    //}
-    //if (m1Area < smallestM1Area || m1Area > largetM1Area) LevelGenerate(RectangleCount, ColorCount);
+    if (i == tryLimit) LevelGenerate(RectangleCount, ColorCount, M1Area, M2, M3, M4, M5);
+}
+
+void Board::TestAllRectangleNeighbors()
+{
+    bool allCorrect = true;
+    int rectangleIndex = 0;
+
+    for (auto* region : regions)
+    {
+        for (auto* rectangle : region->GetConvex())
+        {
+            std::cout
+                << "\n\n######## RECTANGLE "
+                << rectangleIndex
+                << " ########\n";
+
+            bool result =
+                rectangle->TestNeighbors();
+
+            if (!result)
+                allCorrect = false;
+
+            rectangleIndex++;
+        }
+    }
+
+    std::cout
+        << "\n\n====================================\n";
+
+    if (allCorrect)
+    {
+        std::cout
+            << "ALL RECTANGLE NEIGHBORS ARE CORRECT\n";
+    }
+    else
+    {
+        std::cout
+            << "SOME RECTANGLE NEIGHBORS ARE WRONG\n";
+    }
+
+    std::cout
+        << "====================================\n";
+}
+
+bool Board::isM2Candidate(Region* region)
+{
+    for (auto* rectangle : region->GetConvex())
+    {
+        for (int i = 0; i < rectangle->CountTopNeighbors(); i++)
+        {
+            Rectangle* neighbor =
+                rectangle->GetTopNeighbor(i);
+
+            // Ignore another rectangle belonging to same region.
+            if (neighbor->GetRegion() == region)
+                continue;
+
+            int mechanic =
+                neighbor->GetMechanic();
+
+            // m0, m1 and m2 are valid.
+            if (mechanic != 0 &&
+                mechanic != 1 &&
+                mechanic != 2)
+            {
+                return false;
+            }
+        }
+    }
+
+    // No external top neighbors is also valid.
+    return true;
+}
+
+bool Board::isM4Candidate(Region* region)
+{
+    bool leftValid = true;
+    bool rightValid = true;
+
+    // --------------------------------
+    // Check LEFT side
+    // --------------------------------
+
+    for (auto* rectangle : region->GetConvex())
+    {
+        for (int i = 0; i < rectangle->CountLeftNeighbors(); i++)
+        {
+            Rectangle* neighbor =
+                rectangle->GetLeftNeighbor(i);
+
+            // Ignore another rectangle inside the same region.
+            if (neighbor->GetRegion() == region)
+                continue;
+
+            int mechanic =
+                neighbor->GetMechanic();
+
+            // Only m0 or m4 can be on the left.
+            if (mechanic != 0 &&
+                mechanic != 4)
+            {
+                leftValid = false;
+                break;
+            }
+        }
+
+        if (!leftValid)
+            break;
+    }
+
+
+    // --------------------------------
+    // Check RIGHT side
+    //
+    // We don't store right neighbors.
+    // If another rectangle has one of our
+    // rectangles as its LEFT neighbor,
+    // then that rectangle is on our RIGHT.
+    // --------------------------------
+
+    for (auto* otherRegion : regions)
+    {
+        if (otherRegion == region)
+            continue;
+
+        for (auto* otherRectangle : otherRegion->GetConvex())
+        {
+            bool isRightNeighbor = false;
+
+            for (int i = 0;
+                i < otherRectangle->CountLeftNeighbors();
+                i++)
+            {
+                Rectangle* leftNeighbor =
+                    otherRectangle->GetLeftNeighbor(i);
+
+                if (leftNeighbor->GetRegion() == region)
+                {
+                    isRightNeighbor = true;
+                    break;
+                }
+            }
+
+            if (!isRightNeighbor)
+                continue;
+
+            int mechanic =
+                otherRectangle->GetMechanic();
+
+            // Only m0 or m4 can be on the right.
+            if (mechanic != 0 &&
+                mechanic != 4)
+            {
+                rightValid = false;
+                break;
+            }
+        }
+
+        if (!rightValid)
+            break;
+    }
+
+
+    // At least one side must be valid.
+    return leftValid || rightValid;
+}
+
+bool Board::isM3Candidate(Region* region)
+{
+    for (auto* rectangle : region->GetConvex())
+    {
+        for (int i = 0; i < rectangle->CountTopNeighbors(); i++)
+        {
+            Rectangle* neighbor =
+                rectangle->GetTopNeighbor(i);
+
+            // Ignore rectangles inside the same region.
+            if (neighbor->GetRegion() == region)
+                continue;
+
+            int mechanic =
+                neighbor->GetMechanic();
+
+            // Valid mechanics above/below in your naming convention:
+            // m0, m1, m2, m3, m5
+            if (mechanic != 0 &&
+                mechanic != 1 &&
+                mechanic != 2 &&
+                mechanic != 3 &&
+                mechanic != 5)
+            {
+                return false;
+            }
+        }
+    }
+
+    // No external top neighbors is also valid.
+    return true;
 }

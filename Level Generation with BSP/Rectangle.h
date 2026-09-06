@@ -5,6 +5,7 @@
 #include <algorithm>
 
 class Cell;
+class Region;
 
 class Rectangle
 {
@@ -14,9 +15,12 @@ private:
 
 	std::vector<Cell*>* cells;
 	std::vector<Rectangle*> neighbers;
+	std::vector<Rectangle*> topNeighbors;
+	std::vector<Rectangle*> leftNeighbors;
+
+	Region* region;
 
 	inline void sortCells();
-	void findNeigbers();
 	void recalculateSize();
 
 	int width;
@@ -39,6 +43,8 @@ public:
 	int Height() const;
 
 	int CountNeighbors() const;
+	int CountTopNeighbors() const;
+	int CountLeftNeighbors() const;
 
 	int GetMechanic() const;
 	int GetColor() const;
@@ -47,6 +53,8 @@ public:
 	void AddCell(Cell* const);
 
 	Rectangle* GetNeighbor(int) const;
+	Rectangle* GetTopNeighbor(int) const;
+	Rectangle* GetLeftNeighbor(int) const;
 
 	void SetMechanic(int MechanicNumber);
 	void SetColor(int ColorNumber);
@@ -60,4 +68,13 @@ public:
 	const std::vector<Cell*>* getCells() const;
 
 	Rectangle* Split();
+
+	bool TestNeighbors();
+
+	Region* GetRegion() const;
+	void SetRegion(Region* Reg);
+
+	void FindNeigbers();
+
+	std::vector<Cell*>* GetCells();
 };
