@@ -7,10 +7,12 @@
 
 #include "Rectangle.h"
 #include "Cell.h"
+#include "Region.h"
 
 class Board
 {
 private:
+	std::vector<Region*> regions;
 	std::vector<Rectangle*> rectangles;
 	std::vector<Cell*> cells;
 
@@ -20,11 +22,8 @@ private:
 	const int smallestM1Area = 16;
 	const int largetM1Area = 20;
 
-	bool rectangleSplit(Rectangle*);
 	void mesh(int RectangleCount);
 	void paint();
-
-	std::vector<std::vector<Rectangle*>*> colorRectangles; //is a hack
 
 	void rectangleSort()
 	{
@@ -54,20 +53,25 @@ private:
 
 	void resetRectangle()
 	{
-		Rectangle* newRectangle = new Rectangle();
 
-		for (int n = 0; n < cells.size(); n++)
+		for (int i = 0; i < regions.size(); i++)
 		{
-			cells.at(n)->ChangeRectangle(newRectangle);
+			delete regions.at(i);
 		}
+		regions.clear();
+
+		Rectangle* newRectangle = new Rectangle(width, height);
 
 		for (int n = 0; n < rectangles.size(); n++)
 		{
 			delete rectangles.at(n);
 		}
+
 		rectangles.clear();
 
 		rectangles.push_back(newRectangle);
+
+		cells = *newRectangle->getCells();
 	}
 
 public:

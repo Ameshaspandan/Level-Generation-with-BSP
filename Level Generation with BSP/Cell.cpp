@@ -5,7 +5,6 @@ Cell::Cell(int X, int Y, Rectangle* Rectangle, Cell* Left, Cell* Bottom) :
 	x{ X }, y{ Y }, left{ Left }, bottom{ Bottom }
 {
 	rectangle = Rectangle;
-	rectangle->AddCell(this);
 }
 
 std::ostream& operator<<(std::ostream& Output, const Cell& cell)
@@ -21,9 +20,7 @@ bool Cell::operator<(const Cell& neighbor) const
 }
 
 void Cell::ChangeRectangle(Rectangle* const NewRectangle) {
-	rectangle->ExitCell(this);
 	rectangle = NewRectangle;
-	rectangle->AddCell(this);
 }
 
 Rectangle* Cell::BottomRectangle() const

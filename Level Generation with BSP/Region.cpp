@@ -4,16 +4,12 @@
 
 using Convex = std::vector<Rectangle*>;
 
-Region::Region() : convex{}, Area{}
+Region::Region() : convex{}, area{}
 {
 }
 
 Region::~Region()
 {
-	for (auto* rectangle : convex)
-	{
-		delete rectangle;
-	}
 }
 
 const Convex& Region::GetConvex() const
@@ -24,7 +20,7 @@ const Convex& Region::GetConvex() const
 void Region::AddRecangle(Rectangle* rectangle)
 {
 	convex.push_back(rectangle);
-	Area += rectangle->Area();
+	area += rectangle->Area();
 }
 
 bool Region::RemoveRecangle(Rectangle* rectangle)
@@ -33,7 +29,7 @@ bool Region::RemoveRecangle(Rectangle* rectangle)
 	if (search != convex.end())
 	{
 		convex.erase(search);
-		Area -= rectangle->Area();
+		area -= rectangle->Area();
 		return true;
 	}
 	return false;
@@ -45,4 +41,9 @@ void Region::SetMechanic(int Mechanic)
 	{
 		rectangle->SetMechanic(Mechanic);
 	}
+}
+
+int Region::Size()
+{
+	return convex.size();
 }

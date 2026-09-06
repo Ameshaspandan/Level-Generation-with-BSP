@@ -12,13 +12,22 @@ private:
 	int colorNumber;
 	int mechanicNumber;
 
-	std::vector<Cell*> cells;
+	std::vector<Cell*>* cells;
 	std::vector<Rectangle*> neighbers;
 
 	inline void sortCells();
+	void findNeigbers();
+	void recalculateSize();
+
+	int width;
+	int height;
+
+	const int minWidth = 1, minHeight = 1;
 
 public:
-	Rectangle();
+	Rectangle(std::vector<Cell*>* Cells);
+	Rectangle(int Width, int height);
+	~Rectangle();
 
 	friend std::ostream& operator<<(std::ostream&, const Rectangle&);
 
@@ -36,7 +45,7 @@ public:
 
 	void ExitCell(Cell* const);
 	void AddCell(Cell* const);
-	void FindNeigbers();
+
 	Rectangle* GetNeighbor(int) const;
 
 	void SetMechanic(int MechanicNumber);
@@ -45,4 +54,10 @@ public:
 	Cell* const BaseCell() const;
 
 	inline int Area() const;
+
+	Cell* getCell(int X, int Y);
+
+	const std::vector<Cell*>* getCells() const;
+
+	Rectangle* Split();
 };

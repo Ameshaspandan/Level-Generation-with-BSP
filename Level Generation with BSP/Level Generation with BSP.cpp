@@ -22,10 +22,10 @@ int main()
         return 1;
     }
 
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < 50; i++)
     {
         file << "Layout " << i + 1 << "\n";
-        board.LevelGenerate(7, 5);
+        board.LevelGenerate(10, 5);
         file << board;
     }
 

@@ -7,6 +7,8 @@
 class Region
 {
 	using Convex = std::vector<Rectangle*>;
+
+	int area;
 private:
 	Convex convex;
 public:
@@ -18,7 +20,11 @@ public:
 	void AddRecangle(Rectangle*);
 	bool RemoveRecangle(Rectangle*);
 	void SetMechanic(int Mechanic);
+	int GetColor() { return convex.at(0)->GetColor(); };
+	int GetMechanic() { return convex.at(0)->GetMechanic(); };
 
-	int Area;
+	int Size();
+
+	int Area() { return area; };
 };
 
