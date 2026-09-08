@@ -19,11 +19,16 @@ private:
 	std::mt19937 rng;
 
 	const int tryLimit = 100;
-	const int smallestM1Area = 16;
+	
+	const int smallestM1Area = 15;
 	const int largetM1Area = 20;
+	const int smallestM2Area = 5;
+	const int smallestM3Area = 5;
+	const int smallestM4Area = 5;
+	const int smallestM5Area = 4;
 
 	void mesh(int RectangleCount);
-	bool paint(int M1Area, bool M2, bool M3, bool M4, bool M5);
+	bool paint(bool M2, bool M3, bool M4, bool M5);
 
 	void rectangleSort()
 	{
@@ -82,7 +87,7 @@ public:
 	Board(int Width, int Height);
 	~Board();
 
-	void LevelGenerate(int RectangleCount, int ColorCount, int M1Area, bool M2, bool M3, bool M4, bool M5);
+	void LevelGenerate(int RectangleCount, int ColorCount, bool M2, bool M3, bool M4, bool M5);
 
 	void TestAllRectangleNeighbors();
 

@@ -202,7 +202,7 @@ bool Board::touchesBoardEdge(Rectangle* Rectangle)
         bottom == height;
 }
 
-bool Board::paint(int M1Area, bool M2, bool M3, bool M4, bool M5)
+bool Board::paint(bool M2, bool M3, bool M4, bool M5)
 {
     for (auto* region : regions)
     {
@@ -244,7 +244,7 @@ bool Board::paint(int M1Area, bool M2, bool M3, bool M4, bool M5)
 
     int m1Area = 0;
 
-    while (m1Area < M1Area)
+    while (m1Area < smallestM1Area)
     {
         std::vector<Region*> m1Candidates;
 
@@ -546,23 +546,40 @@ bool Board::paint(int M1Area, bool M2, bool M3, bool M4, bool M5)
     bool m4Valid = !M4;
     bool m5Valid = !M5;
 
+    int m2Area = 0;
+    int m3Area = 0;
+    int m4Area = 0;
+    int m5Area = 0;
+
     for (auto* region : regions)
     {
         int mechanic =
             region->GetMechanic();
 
-        if (M2 && mechanic == m.at(2))
-            m2Valid = true;
+        if (mechanic == m.at(2))
+            m2Area += region->Area();
 
-        if (M3 && mechanic == m.at(3))
-            m3Valid = true;
+        if (mechanic == m.at(3))
+            m3Area += region->Area();
 
-        if (M4 && mechanic == m.at(4))
-            m4Valid = true;
+        if (mechanic == m.at(4))
+            m4Area += region->Area();
 
-        if (M5 && mechanic == m.at(5))
-            m5Valid = true;
+        if (mechanic == m.at(5))
+            m5Area += region->Area();
     }
+
+    if (M2 && m2Area > smallestM2Area)
+        m2Valid = true;
+
+    if (M3 && m3Area > smallestM3Area)
+        m3Valid = true;
+
+    if (M4 && m4Area > smallestM4Area)
+        m4Valid = true;
+
+    if (M5 && m5Area > smallestM5Area)
+        m5Valid = true;
 
 
     return
@@ -572,7 +589,7 @@ bool Board::paint(int M1Area, bool M2, bool M3, bool M4, bool M5)
         m5Valid;
 }
 
-void Board::LevelGenerate(int RectangleCount, int ColorCount, int M1Area, bool M2, bool M3, bool M4, bool M5)
+void Board::LevelGenerate(int RectangleCount, int ColorCount, bool M2, bool M3, bool M4, bool M5)
 {
     resetRectangle();
 
@@ -599,10 +616,10 @@ void Board::LevelGenerate(int RectangleCount, int ColorCount, int M1Area, bool M
 
     for (; i < tryLimit; i++)
     {
-        if (paint(M1Area, M2, M3, M4, M5)) break;
+        if (paint(M2, M3, M4, M5)) break;
     }
 
-    if (i == tryLimit) LevelGenerate(RectangleCount, ColorCount, M1Area, M2, M3, M4, M5);
+    if (i == tryLimit) LevelGenerate(RectangleCount, ColorCount, M2, M3, M4, M5);
 }
 
 void Board::TestAllRectangleNeighbors()
