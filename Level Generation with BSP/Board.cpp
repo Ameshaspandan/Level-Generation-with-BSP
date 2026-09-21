@@ -31,13 +31,45 @@ Cell* const Board::getCell(int X, int Y) const
 
 std::ostream& operator<<(std::ostream& Output, const Board& board)
 {
+    Output << "Layer -1, ";
+    for (int i = 0; i < board.width; i++)
+    {
+        Output << ", ";
+    }
+    Output << "Layer 0, ";
+    for (int i = 0; i < board.width; i++)
+    {
+        Output << ", ";
+    }
+    Output << "Layer +1, ";
+    Output << "\n";
+
     for (int y = 0; y < board.height; y++)
     {
+        Output << ", ";
         for (int x = 0; x < board.width; x++)
         {
             Output
                 << std::setw(2)
-                << *board.getCell(x, y)
+                << board.getCell(x, y)->Layer0()
+                << ",";
+        }
+
+        Output << ", ";
+        for (int x = 0; x < board.width; x++)
+        {
+            Output
+                << std::setw(2)
+                << board.getCell(x, y)->Layer1()
+                << ",";
+        }
+
+        Output << ", ";
+        for (int x = 0; x < board.width; x++)
+        {
+            Output
+                << std::setw(2)
+                << board.getCell(x, y)->Layer2()
                 << ",";
         }
 
@@ -129,7 +161,7 @@ void Board::mesh(int ColorCount)
     int m = 0;
     for (auto* rect : rectangles)
     {
-        rect->SetMechanic(m++);
+        rect->SetMechanicLayer1(m++);
     }
 }
 
@@ -178,7 +210,7 @@ void Board::setColorMechanic(std::vector<Rectangle*>* ColorRectangle, int Mechan
 {
     for (Rectangle* rectangle : *ColorRectangle)
     {
-        rectangle->SetMechanic(Mechanic);
+        rectangle->SetMechanicLayer1(Mechanic);
     }
 }
 
@@ -202,41 +234,55 @@ bool Board::touchesBoardEdge(Rectangle* Rectangle)
         bottom == height;
 }
 
-bool Board::paint(bool M2, bool M3, bool M4, bool M5)
+bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
 {
     for (auto* region : regions)
     {
-        region->SetMechanic(-1);
+        region->SetMechanicLayer0(0);
+        region->SetMechanicLayer1(-1);
+        region->SetMechanicLayer2(0);
     }
 
-    std::vector<int> m{ 0, 1, 2, 3, 4, 5 };
+    std::vector<int> m{ 0, 1, 2, 3, 4, 5, -1, 10 };
     std::vector<Region*> availableRegions{ regions };
 
     // ------------------------------------------------
     // m0
     // ------------------------------------------------
 
-    if (availableRegions.empty())
-        return false;
-
-    int smallestArea = availableRegions.at(0)->Area();
-    int indexM0 = 0;
-
-    for (int i = 1; i < static_cast<int>(availableRegions.size()); i++)
+    int m0Area{};
+    
+    while (m0Area < smallestM0Area)
     {
-        if (availableRegions.at(i)->Area() < smallestArea)
+        if (availableRegions.empty())
+            return false;
+
+        int smallestArea = availableRegions.at(0)->Area();
+        int indexM0 = 0;
+
+        for (int i = 1; i < static_cast<int>(availableRegions.size()); i++)
         {
-            indexM0 = i;
-            smallestArea = availableRegions.at(i)->Area();
+            if (availableRegions.at(i)->Area() < smallestArea)
+            {
+                indexM0 = i;
+                smallestArea = availableRegions.at(i)->Area();
+            }
         }
+
+        availableRegions.at(indexM0)->SetMechanicLayer1(m.at(0));
+
+        m0Area += availableRegions.at(indexM0)->Area();
+
+        availableRegions.erase(
+            availableRegions.begin() + indexM0
+        );
     }
 
-    availableRegions.at(indexM0)->SetMechanic(m.at(0));
+    //-------------------------------------------------
+    //Specify Md and Mu Regions 
+    //-------------------------------------------------
 
-    availableRegions.erase(
-        availableRegions.begin() + indexM0
-    );
-
+    std::vector<Region*> upDownLayer{ availableRegions };
 
     // ------------------------------------------------
     // m1
@@ -267,7 +313,7 @@ bool Board::paint(bool M2, bool M3, bool M4, bool M5)
                         continue;
 
                     int mechanic =
-                        neighbor->GetMechanic();
+                        neighbor->GetMechanicLayer1();
 
                     // Existing external top neighbors
                     // must be m0 or m1.
@@ -301,7 +347,7 @@ bool Board::paint(bool M2, bool M3, bool M4, bool M5)
         Region* selectedRegion =
             m1Candidates.at(candidateIndex);
 
-        selectedRegion->SetMechanic(m.at(1));
+        selectedRegion->SetMechanicLayer1(m.at(1));
 
         m1Area += selectedRegion->Area();
 
@@ -322,18 +368,22 @@ bool Board::paint(bool M2, bool M3, bool M4, bool M5)
     // m2 / m3 / m4 / m5 candidates
     // ------------------------------------------------
 
-    std::vector<Region*> m2Candidates;
-    std::vector<Region*> m3Candidates;
-    std::vector<Region*> m4Candidates;
-    std::vector<Region*> m5Candidates;
+    std::vector<Region*> m2Candidates{};
+    std::vector<Region*> m3Candidates{};
+    std::vector<Region*> m4Candidates{};
+    std::vector<Region*> m5Candidates{};
+    std::vector<Region*> mdCandidates{};
+    std::vector<Region*> muCandidates{};
 
-    int countSelectedMechanics = 0;
+    int countSelectedMechanicsLayer0 = 0;
+    int countSelectedMechanicsLayer1 = 0;
+    int countSelectedMechanicsLayer2 = 0;
 
 
     // m2 can use every remaining region
     if (M2)
     {
-        countSelectedMechanics++;
+        countSelectedMechanicsLayer1++;
 
         for (auto* region : availableRegions)
         {
@@ -348,11 +398,11 @@ bool Board::paint(bool M2, bool M3, bool M4, bool M5)
     // m3 can use every remaining region
     if (M3)
     {
-        m3Candidates.clear();
+        countSelectedMechanicsLayer1++;
 
         for (auto* candidate : availableRegions)
         {
-            if (candidate->GetMechanic() != -1)
+            if (candidate->GetMechanicLayer1() != -1)
                 continue;
 
             if (isM3Candidate(candidate))
@@ -366,7 +416,7 @@ bool Board::paint(bool M2, bool M3, bool M4, bool M5)
     // m4 can use every remaining region
     if (M4)
     {
-        countSelectedMechanics++;
+        countSelectedMechanicsLayer1++;
 
         for (auto* region : availableRegions)
         {
@@ -381,7 +431,7 @@ bool Board::paint(bool M2, bool M3, bool M4, bool M5)
     // m5 only accepts even rectangular regions
     if (M5)
     {
-        countSelectedMechanics++;
+        countSelectedMechanicsLayer1++;
 
         for (auto* region : availableRegions)
         {
@@ -410,15 +460,8 @@ bool Board::paint(bool M2, bool M3, bool M4, bool M5)
         return false;
 
 
-    // No m2-m5 requested.
-    if (countSelectedMechanics == 0)
-    {
-        return availableRegions.empty();
-    }
-
-
     // ------------------------------------------------
-    // Assign m2 / m3 / m4 / m5
+    // Assign m2 / m3 / m4 / m5 / Md / Mu
     // ------------------------------------------------
 
     std::vector<int> validIndeces;
@@ -429,7 +472,7 @@ bool Board::paint(bool M2, bool M3, bool M4, bool M5)
         validIndeces.clear();
 
         if (selected.size() ==
-            static_cast<size_t>(countSelectedMechanics))
+            static_cast<size_t>(countSelectedMechanicsLayer1))
         {
             selected.clear();
         }
@@ -514,7 +557,6 @@ bool Board::paint(bool M2, bool M3, bool M4, bool M5)
             validIndeces.push_back(m.at(4));
         }
 
-
         // No mechanic can be assigned to this region.
         if (validIndeces.empty())
         {
@@ -533,9 +575,83 @@ bool Board::paint(bool M2, bool M3, bool M4, bool M5)
 
         selected.push_back(selectedMechanic);
 
-        region->SetMechanic(selectedMechanic);
+        region->SetMechanicLayer1(selectedMechanic);
     }
 
+    // Md & Mu Candidate
+    if (Md)
+    {
+        countSelectedMechanicsLayer0++;
+
+        for (auto* region : upDownLayer)
+        {
+            if (isMdCandidate(region))
+            {
+                mdCandidates.push_back(region);
+            }
+        }
+    }
+
+    if (Mu)
+    {
+        countSelectedMechanicsLayer2++;
+
+        for (auto* region : upDownLayer)
+        {
+            if (isMuCandidate(region))
+            {
+                muCandidates.push_back(region);
+            }
+        }
+    }
+
+    //Md
+    int mdArea{};
+
+    if (Md)
+    {
+        for (auto* region : mdCandidates)
+        {
+            //-------------------
+            //Md
+            //-------------------
+
+            bool select = randomInt(0, 1) == 0 ? false : true;
+
+            if (select)
+            {
+                if (mdArea + region->Area() < largestMdArea)
+                {
+                    region->SetMechanicLayer0(m.at(6));
+                    mdArea += region->Area();
+                }
+            }
+        }
+    }
+
+    //Mu
+    int muArea{};
+
+    if (Mu)
+    {
+        for (auto* region : muCandidates)
+        {
+            //-------------------
+            //Mu
+            //-------------------
+
+            bool select = randomInt(0, 1) == 0 ? false : true;
+
+            if (select)
+            {
+                if (muArea + region->Area() < largestMuArea)
+                {
+                    region->SetMechanicLayer2(m.at(7));
+                    muArea += region->Area();
+                }
+            }
+        }
+    }
 
     // ------------------------------------------------
     // Make sure every enabled mechanic exists
@@ -545,16 +661,18 @@ bool Board::paint(bool M2, bool M3, bool M4, bool M5)
     bool m3Valid = !M3;
     bool m4Valid = !M4;
     bool m5Valid = !M5;
+    bool mdValid = !Md;
+    bool muValid = !Mu;
 
-    int m2Area = 0;
-    int m3Area = 0;
-    int m4Area = 0;
-    int m5Area = 0;
+    int m2Area{};
+    int m3Area{};
+    int m4Area{};
+    int m5Area{};
 
     for (auto* region : regions)
     {
         int mechanic =
-            region->GetMechanic();
+            region->GetMechanicLayer1();
 
         if (mechanic == m.at(2))
             m2Area += region->Area();
@@ -569,27 +687,35 @@ bool Board::paint(bool M2, bool M3, bool M4, bool M5)
             m5Area += region->Area();
     }
 
-    if (M2 && m2Area > smallestM2Area)
+    if (M2 && m2Area >= smallestM2Area)
         m2Valid = true;
 
-    if (M3 && m3Area > smallestM3Area)
+    if (M3 && m3Area >= smallestM3Area)
         m3Valid = true;
 
-    if (M4 && m4Area > smallestM4Area)
+    if (M4 && m4Area >= smallestM4Area)
         m4Valid = true;
 
-    if (M5 && m5Area > smallestM5Area)
+    if (M5 && m5Area >= smallestM5Area)
         m5Valid = true;
+
+    if (Md && mdArea >= smallestMdArea)
+        mdValid = true;
+
+    if (Mu && muArea >= smallestMuArea)
+        muValid = true;
 
 
     return
         m2Valid &&
         m3Valid &&
         m4Valid &&
-        m5Valid;
+        m5Valid &&
+        mdValid &&
+        muValid;
 }
 
-void Board::LevelGenerate(int RectangleCount, int ColorCount, bool M2, bool M3, bool M4, bool M5)
+void Board::LevelGenerate(int RectangleCount, int ColorCount,bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
 {
     resetRectangle();
 
@@ -612,14 +738,14 @@ void Board::LevelGenerate(int RectangleCount, int ColorCount, bool M2, bool M3, 
 
     mesh(ColorCount);
 
-    int i{0};
+    int i{};
 
     for (; i < tryLimit; i++)
     {
-        if (paint(M2, M3, M4, M5)) break;
+        if (paint(M0, M2, M3, M4, M5, Md, Mu)) break;
     }
 
-    if (i == tryLimit) LevelGenerate(RectangleCount, ColorCount, M2, M3, M4, M5);
+    if (i == tryLimit) LevelGenerate(RectangleCount, ColorCount,M0, M2, M3, M4, M5, Md, Mu);
 }
 
 void Board::TestAllRectangleNeighbors()
@@ -678,7 +804,7 @@ bool Board::isM2Candidate(Region* region)
                 continue;
 
             int mechanic =
-                neighbor->GetMechanic();
+                neighbor->GetMechanicLayer1();
 
             // m0, m1 and m2 are valid.
             if (mechanic != 0 &&
@@ -715,7 +841,7 @@ bool Board::isM4Candidate(Region* region)
                 continue;
 
             int mechanic =
-                neighbor->GetMechanic();
+                neighbor->GetMechanicLayer1();
 
             // Only m0 or m4 can be on the left.
             if (mechanic != 0 &&
@@ -767,7 +893,7 @@ bool Board::isM4Candidate(Region* region)
                 continue;
 
             int mechanic =
-                otherRectangle->GetMechanic();
+                otherRectangle->GetMechanicLayer1();
 
             // Only m0 or m4 can be on the right.
             if (mechanic != 0 &&
@@ -801,7 +927,7 @@ bool Board::isM3Candidate(Region* region)
                 continue;
 
             int mechanic =
-                neighbor->GetMechanic();
+                neighbor->GetMechanicLayer1();
 
             // Valid mechanics above/below in your naming convention:
             // m0, m1, m2, m3, m5
@@ -816,6 +942,24 @@ bool Board::isM3Candidate(Region* region)
         }
     }
 
+    // Color UP Layer
+
+    // Color Down Layer
+
     // No external top neighbors is also valid.
+    return true;
+}
+
+bool Board::isMuCandidate(Region* region)
+{
+    if (region->GetConvex()[0]->GetMechanicLayer1() == 4) return false;
+   
+    return true;
+}
+
+bool Board::isMdCandidate(Region* region)
+{
+    if (region->GetConvex()[0]->GetMechanicLayer1() == 1) return false;
+
     return true;
 }

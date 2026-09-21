@@ -7,10 +7,19 @@ Cell::Cell(int X, int Y, Rectangle* Rectangle, Cell* Left, Cell* Bottom) :
 	rectangle = Rectangle;
 }
 
-std::ostream& operator<<(std::ostream& Output, const Cell& cell)
+int Cell::Layer0()
 {
-	Output << *(cell.rectangle);
-	return Output;
+	return rectangle->GetMechanicLayer0();
+}
+
+int Cell::Layer1()
+{
+	return rectangle->GetMechanicLayer1();
+}
+
+int Cell::Layer2()
+{
+	return  rectangle->GetMechanicLayer2();
 }
 
 bool Cell::operator<(const Cell& neighbor) const

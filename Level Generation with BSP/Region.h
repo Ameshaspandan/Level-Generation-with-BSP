@@ -21,9 +21,13 @@ public:
 
 	void AddRecangle(Rectangle*);
 	bool RemoveRecangle(Rectangle*);
-	void SetMechanic(int Mechanic);
+	void SetMechanicLayer0(int Mechanic);
+	void SetMechanicLayer1(int Mechanic);
+	void SetMechanicLayer2(int Mechanic);
 	int GetColor() { return convex.at(0)->GetColor(); };
-	int GetMechanic() { return convex.at(0)->GetMechanic(); };
+	int GetMechanicLayer0() { return convex.at(0)->GetMechanicLayer0(); };
+	int GetMechanicLayer1() { return convex.at(0)->GetMechanicLayer1(); };
+	int GetMechanicLayer2() { return convex.at(0)->GetMechanicLayer2(); };
 
 	int Size();
 

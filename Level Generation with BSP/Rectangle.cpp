@@ -3,7 +3,7 @@
 #include "Utility.h"
 
 Rectangle::Rectangle(std::vector<Cell*>* Cells) :
-	cells{ Cells }, neighbers{}, colorNumber{}, mechanicNumber{}, region{}
+	cells{ Cells }, neighbers{}, colorNumber{}, mechanicLayer0{}, mechanicLayer1{}, mechanicLayer2{}, region{}
 {
 	sortCells();
 	recalculateSize();
@@ -15,7 +15,7 @@ Rectangle::Rectangle(std::vector<Cell*>* Cells) :
 }
 
 Rectangle::Rectangle(int Width, int Height) :
-	neighbers{}, colorNumber{}, mechanicNumber{}, width{Width}, height{Height}
+	neighbers{}, colorNumber{}, mechanicLayer0{}, mechanicLayer1{}, mechanicLayer2{}, width{Width}, height{Height}
 {
 	cells = new std::vector<Cell*>();
 	for (int y = 0; y < Height; y++)
@@ -52,10 +52,22 @@ void Rectangle::AddCell(Cell* cell)
 	sortCells();
 }
 
-std::ostream& operator<<(std::ostream& Output, const Rectangle& rectangle)
+std::ostream& Rectangle::Layer0(std::ostream& Output)
 {
-	Output << rectangle.mechanicNumber;
+	Output << mechanicLayer0;
 	return Output;
+}
+
+std::ostream& Rectangle::Layer1(std::ostream& Output)
+{
+    Output << mechanicLayer1;
+    return Output;
+}
+
+std::ostream& Rectangle::Layer2(std::ostream& Output)
+{
+    Output << mechanicLayer2;
+    return Output;
 }
 
 void Rectangle::FindNeigbers()
@@ -141,9 +153,19 @@ int Rectangle::CountLeftNeighbors() const
 	return leftNeighbors.size();
 }
 
-int Rectangle::GetMechanic() const
+int Rectangle::GetMechanicLayer0() const
 {
-	return mechanicNumber;
+	return mechanicLayer0;
+}
+
+int Rectangle::GetMechanicLayer1() const
+{
+    return mechanicLayer1;
+}
+
+int Rectangle::GetMechanicLayer2() const
+{
+    return mechanicLayer2;
 }
 
 int Rectangle::GetColor() const
@@ -167,11 +189,19 @@ void Rectangle::sortCells()
 
 bool Rectangle::operator==(const Rectangle& rectangle) const
 {
-	return mechanicNumber == rectangle.mechanicNumber;
+	return colorNumber == rectangle.colorNumber;
 }
 
-void Rectangle::SetMechanic(int MechanicNumber) {
-	mechanicNumber = MechanicNumber;
+void Rectangle::SetMechanicLayer0(int MechanicNumber) {
+	mechanicLayer0 = MechanicNumber;
+}
+
+void Rectangle::SetMechanicLayer1(int MechanicNumber) {
+    mechanicLayer1 = MechanicNumber;
+}
+
+void Rectangle::SetMechanicLayer2(int MechanicNumber) {
+    mechanicLayer2 = MechanicNumber;
 }
 
 void Rectangle::SetColor(int ColorNumber) {
@@ -353,7 +383,7 @@ bool Rectangle::TestNeighbors()
 
         std::cout
             << "Mechanic: "
-            << GetMechanic()
+            << GetMechanicLayer1()
             << "\n";
     }
 

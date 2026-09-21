@@ -16,7 +16,9 @@ private:
 public:
 	Cell(int X, int Y, Rectangle* Rectangle, Cell* Left = nullptr, Cell* Bottom = nullptr);
 
-	friend std::ostream& operator<<(std::ostream&, const Cell&);
+	int Layer0();
+	int Layer1();
+	int Layer2();
 
 	bool operator<(const Cell& neighbor) const;
 

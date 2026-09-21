@@ -20,15 +20,22 @@ private:
 
 	const int tryLimit = 100;
 	
+
+	const int smallestM0Area = 5;
 	const int smallestM1Area = 15;
-	const int largetM1Area = 20;
+	const int largestM1Area = 25;
 	const int smallestM2Area = 5;
 	const int smallestM3Area = 5;
 	const int smallestM4Area = 5;
 	const int smallestM5Area = 4;
 
+	const int smallestMdArea = 20;
+	const int smallestMuArea = 20;
+	const int largestMdArea = 50;
+	const int largestMuArea = 50;
+
 	void mesh(int RectangleCount);
-	bool paint(bool M2, bool M3, bool M4, bool M5);
+	bool paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu);
 
 	void rectangleSort()
 	{
@@ -47,6 +54,8 @@ private:
 	bool isM2Candidate(Region* region);
 	bool isM4Candidate(Region* region);
 	bool isM3Candidate(Region* region);
+	bool isMuCandidate(Region* region);
+	bool isMdCandidate(Region* region);
 
 	Cell* const getCell(int X, int Y) const;
 
@@ -87,7 +96,7 @@ public:
 	Board(int Width, int Height);
 	~Board();
 
-	void LevelGenerate(int RectangleCount, int ColorCount, bool M2, bool M3, bool M4, bool M5);
+	void LevelGenerate(int RectangleCount, int ColorCount, bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu);
 
 	void TestAllRectangleNeighbors();
 

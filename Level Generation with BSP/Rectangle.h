@@ -11,7 +11,9 @@ class Rectangle
 {
 private:
 	int colorNumber;
-	int mechanicNumber;
+	int mechanicLayer0;
+	int mechanicLayer1;
+	int mechanicLayer2;
 
 	std::vector<Cell*>* cells;
 	std::vector<Rectangle*> neighbers;
@@ -33,7 +35,9 @@ public:
 	Rectangle(int Width, int height);
 	~Rectangle();
 
-	friend std::ostream& operator<<(std::ostream&, const Rectangle&);
+	std::ostream& Layer0(std::ostream&);
+	std::ostream& Layer1(std::ostream&);
+	std::ostream& Layer2(std::ostream&);
 
 	bool operator==(const Rectangle& region) const;
 
@@ -46,7 +50,9 @@ public:
 	int CountTopNeighbors() const;
 	int CountLeftNeighbors() const;
 
-	int GetMechanic() const;
+	int GetMechanicLayer0() const;
+	int GetMechanicLayer1() const;
+	int GetMechanicLayer2() const;
 	int GetColor() const;
 
 	void ExitCell(Cell* const);
@@ -56,7 +62,9 @@ public:
 	Rectangle* GetTopNeighbor(int) const;
 	Rectangle* GetLeftNeighbor(int) const;
 
-	void SetMechanic(int MechanicNumber);
+	void SetMechanicLayer0(int MechanicNumber);
+	void SetMechanicLayer1(int MechanicNumber);
+	void SetMechanicLayer2(int MechanicNumber);
 	void SetColor(int ColorNumber);
 
 	Cell* const BaseCell() const;

@@ -37,12 +37,28 @@ bool Region::RemoveRecangle(Rectangle* rectangle)
 	return false;
 }
 
-void Region::SetMechanic(int Mechanic)
+void Region::SetMechanicLayer0(int Mechanic)
 {
 	for (auto* rectangle : convex)
 	{
-		rectangle->SetMechanic(Mechanic);
+		rectangle->SetMechanicLayer0(Mechanic);
 	}
+}
+
+void Region::SetMechanicLayer1(int Mechanic)
+{
+    for (auto* rectangle : convex)
+    {
+        rectangle->SetMechanicLayer1(Mechanic);
+    }
+}
+
+void Region::SetMechanicLayer2(int Mechanic)
+{
+    for (auto* rectangle : convex)
+    {
+        rectangle->SetMechanicLayer2(Mechanic);
+    }
 }
 
 int Region::Size()
