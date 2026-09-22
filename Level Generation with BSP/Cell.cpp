@@ -1,8 +1,8 @@
 #include "Cell.h"
 #include "Rectangle.h"
 
-Cell::Cell(int X, int Y, Rectangle* Rectangle, Cell* Left, Cell* Bottom) :
-	x{ X }, y{ Y }, left{ Left }, bottom{ Bottom }
+Cell::Cell(int X, int Y, Rectangle* Rectangle, Cell* Left, Cell* Top) :
+	x{ X }, y{ Y }, left{ Left }, top{ Top }
 {
 	rectangle = Rectangle;
 }
@@ -32,9 +32,9 @@ void Cell::ChangeRectangle(Rectangle* const NewRectangle) {
 	rectangle = NewRectangle;
 }
 
-Rectangle* Cell::BottomRectangle() const
+Rectangle* Cell::TopRectangle() const
 {
-	return bottom == nullptr ? nullptr : bottom->rectangle;
+	return top == nullptr ? nullptr : top->rectangle;
 }
 
 Rectangle* Cell::LeftRectangle() const

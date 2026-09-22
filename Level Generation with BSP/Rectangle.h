@@ -32,7 +32,7 @@ private:
 
 public:
 	Rectangle(std::vector<Cell*>* Cells);
-	Rectangle(int Width, int height);
+	Rectangle(int Width, int Height);
 	~Rectangle();
 
 	std::ostream& Layer0(std::ostream&);
@@ -77,7 +77,7 @@ public:
 
 	Rectangle* Split();
 
-	bool TestNeighbors();
+	//bool TestNeighbors();
 
 	Region* GetRegion() const;
 	void SetRegion(Region* Reg);

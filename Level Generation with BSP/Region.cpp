@@ -19,7 +19,7 @@ const Convex& Region::GetConvex() const
 	return convex;
 }
 
-void Region::AddRecangle(Rectangle* rectangle)
+void Region::AddRectangle(Rectangle* rectangle)
 {
 	convex.push_back(rectangle);
 	area += rectangle->Area();

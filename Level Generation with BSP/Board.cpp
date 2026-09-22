@@ -73,13 +73,6 @@ std::ostream& operator<<(std::ostream& Output, const Board& board)
                 << ",";
         }
 
-        //for (int x = board.width - 2; x >= 0; x--)
-        //{
-        //    Output
-        //        << std::setw(2)
-        //        << *board.getCell(x, y)
-        //        << ",";
-        //}
         Output << "\n";
     }
 	return Output;
@@ -188,7 +181,7 @@ void Board::findRegion()
             // All rectangles in this vector have the same color.
             if (region->GetColor() == rectangle->GetColor())
             {
-                region->AddRecangle(rectangle);
+                region->AddRectangle(rectangle);
                 rectangle->SetRegion(region);
                 found = true;
                 break;
@@ -199,7 +192,7 @@ void Board::findRegion()
         if (!found)
         {
             auto* newRegion = new Region();
-            newRegion->AddRecangle(rectangle);
+            newRegion->AddRectangle(rectangle);
             rectangle->SetRegion(newRegion);
             regions.push_back(newRegion);
         }
@@ -247,7 +240,7 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
     std::vector<Region*> availableRegions{ regions };
 
     // ------------------------------------------------
-    // m0
+    // m0 -> sum of smaller Regions
     // ------------------------------------------------
 
     int m0Area{};
@@ -315,7 +308,7 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
                     int mechanic =
                         neighbor->GetMechanicLayer1();
 
-                    // Existing external top neighbors
+                    // Existing external Top neighbors
                     // must be m0 or m1.
                     if (mechanic != m.at(0) &&
                         mechanic != m.at(1))
@@ -435,7 +428,7 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
 
         for (auto* region : availableRegions)
         {
-            if (region->IsEvenRectangle())
+            if (region->IsEvenRectangle() && isM3Candidate(region))
             {
                 m5Candidates.push_back(region);
             }
@@ -748,47 +741,47 @@ void Board::LevelGenerate(int RectangleCount, int ColorCount,bool M0, bool M2, b
     if (i == tryLimit) LevelGenerate(RectangleCount, ColorCount,M0, M2, M3, M4, M5, Md, Mu);
 }
 
-void Board::TestAllRectangleNeighbors()
-{
-    bool allCorrect = true;
-    int rectangleIndex = 0;
-
-    for (auto* region : regions)
-    {
-        for (auto* rectangle : region->GetConvex())
-        {
-            std::cout
-                << "\n\n######## RECTANGLE "
-                << rectangleIndex
-                << " ########\n";
-
-            bool result =
-                rectangle->TestNeighbors();
-
-            if (!result)
-                allCorrect = false;
-
-            rectangleIndex++;
-        }
-    }
-
-    std::cout
-        << "\n\n====================================\n";
-
-    if (allCorrect)
-    {
-        std::cout
-            << "ALL RECTANGLE NEIGHBORS ARE CORRECT\n";
-    }
-    else
-    {
-        std::cout
-            << "SOME RECTANGLE NEIGHBORS ARE WRONG\n";
-    }
-
-    std::cout
-        << "====================================\n";
-}
+//void Board::TestAllRectangleNeighbors()
+//{
+//    bool allCorrect = true;
+//    int rectangleIndex = 0;
+//
+//    for (auto* region : regions)
+//    {
+//        for (auto* rectangle : region->GetConvex())
+//        {
+//            std::cout
+//                << "\n\n######## RECTANGLE "
+//                << rectangleIndex
+//                << " ########\n";
+//
+//            bool result =
+//                rectangle->TestNeighbors();
+//
+//            if (!result)
+//                allCorrect = false;
+//
+//            rectangleIndex++;
+//        }
+//    }
+//
+//    std::cout
+//        << "\n\n====================================\n";
+//
+//    if (allCorrect)
+//    {
+//        std::cout
+//            << "ALL RECTANGLE NEIGHBORS ARE CORRECT\n";
+//    }
+//    else
+//    {
+//        std::cout
+//            << "SOME RECTANGLE NEIGHBORS ARE WRONG\n";
+//    }
+//
+//    std::cout
+//        << "====================================\n";
+//}
 
 bool Board::isM2Candidate(Region* region)
 {
@@ -929,8 +922,8 @@ bool Board::isM3Candidate(Region* region)
             int mechanic =
                 neighbor->GetMechanicLayer1();
 
-            // Valid mechanics above/below in your naming convention:
-            // m0, m1, m2, m3, m5
+            // Valid mechanics top:
+            // m0, m1, m2, m3, m5  
             if (mechanic != 0 &&
                 mechanic != 1 &&
                 mechanic != 2 &&
@@ -952,14 +945,14 @@ bool Board::isM3Candidate(Region* region)
 
 bool Board::isMuCandidate(Region* region)
 {
-    if (region->GetConvex()[0]->GetMechanicLayer1() == 4) return false;
+    if (region->GetConvex()[0]->GetMechanicLayer1() == 1) return false;
    
     return true;
 }
 
 bool Board::isMdCandidate(Region* region)
 {
-    if (region->GetConvex()[0]->GetMechanicLayer1() == 1) return false;
+    if (region->GetConvex()[0]->GetMechanicLayer1() == 4) return false;
 
     return true;
 }

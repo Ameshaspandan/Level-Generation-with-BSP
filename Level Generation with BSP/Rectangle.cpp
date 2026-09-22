@@ -15,7 +15,7 @@ Rectangle::Rectangle(std::vector<Cell*>* Cells) :
 }
 
 Rectangle::Rectangle(int Width, int Height) :
-	neighbers{}, colorNumber{}, mechanicLayer0{}, mechanicLayer1{}, mechanicLayer2{}, width{Width}, height{Height}
+    neighbers{}, colorNumber{}, mechanicLayer0{}, mechanicLayer1{}, mechanicLayer2{}, width{ Width }, height{ Height }, region{}
 {
 	cells = new std::vector<Cell*>();
 	for (int y = 0; y < Height; y++)
@@ -89,7 +89,7 @@ void Rectangle::FindNeigbers()
 				leftNeighbors.push_back(neighbor);
 			}
 		}
-		neighbor = cell->BottomRectangle();
+		neighbor = cell->TopRectangle();
 		if (neighbor != nullptr && !(neighbor == this))
 		{
 			if (neighbers.empty() ||
@@ -316,216 +316,216 @@ void Rectangle::SetRegion(Region* Reg)
 	region = Reg;
 }
 
-bool Rectangle::TestNeighbors()
-{
-    bool correct = true;
-
-    std::vector<Rectangle*> expectedLeft;
-    std::vector<Rectangle*> expectedTop;
-
-    // ---------------------------------
-    // Calculate expected neighbors
-    // directly from cells
-    // ---------------------------------
-
-    for (auto* cell : *cells)
-    {
-        // LEFT
-        Rectangle* left = cell->LeftRectangle();
-
-        if (left != nullptr &&
-            left != this)
-        {
-            if (std::find(
-                expectedLeft.begin(),
-                expectedLeft.end(),
-                left) == expectedLeft.end())
-            {
-                expectedLeft.push_back(left);
-            }
-        }
-
-        // TOP in your naming convention
-        // actually means BottomRectangle()
-        Rectangle* top = cell->BottomRectangle();
-
-        if (top != nullptr &&
-            top != this)
-        {
-            if (std::find(
-                expectedTop.begin(),
-                expectedTop.end(),
-                top) == expectedTop.end())
-            {
-                expectedTop.push_back(top);
-            }
-        }
-    }
-
-    // ---------------------------------
-    // Print rectangle
-    // ---------------------------------
-
-    std::cout
-        << "\n================================\n";
-
-    std::cout
-        << "Rectangle: "
-        << this
-        << "\n";
-
-    if (GetRegion() != nullptr)
-    {
-        std::cout
-            << "Region: "
-            << GetRegion()
-            << "\n";
-
-        std::cout
-            << "Mechanic: "
-            << GetMechanicLayer1()
-            << "\n";
-    }
-
-    // ---------------------------------
-    // LEFT
-    // ---------------------------------
-
-    std::cout << "\nLEFT NEIGHBORS\n";
-
-    std::cout << "Expected: ";
-
-    if (expectedLeft.empty())
-        std::cout << "NONE";
-
-    for (auto* rectangle : expectedLeft)
-    {
-        std::cout << rectangle << " ";
-    }
-
-    std::cout << "\nStored:   ";
-
-    if (leftNeighbors.empty())
-        std::cout << "NONE";
-
-    for (auto* rectangle : leftNeighbors)
-    {
-        std::cout << rectangle << " ";
-    }
-
-    std::cout << "\n";
-
-    // Check missing left neighbors
-    for (auto* expected : expectedLeft)
-    {
-        if (std::find(
-            leftNeighbors.begin(),
-            leftNeighbors.end(),
-            expected) == leftNeighbors.end())
-        {
-            std::cout
-                << "ERROR: Missing LEFT neighbor: "
-                << expected
-                << "\n";
-
-            correct = false;
-        }
-    }
-
-    // Check extra left neighbors
-    for (auto* stored : leftNeighbors)
-    {
-        if (std::find(
-            expectedLeft.begin(),
-            expectedLeft.end(),
-            stored) == expectedLeft.end())
-        {
-            std::cout
-                << "ERROR: Extra LEFT neighbor: "
-                << stored
-                << "\n";
-
-            correct = false;
-        }
-    }
-
-    // ---------------------------------
-    // TOP
-    // ---------------------------------
-
-    std::cout << "\nTOP NEIGHBORS (BottomRectangle)\n";
-
-    std::cout << "Expected: ";
-
-    if (expectedTop.empty())
-        std::cout << "NONE";
-
-    for (auto* rectangle : expectedTop)
-    {
-        std::cout << rectangle << " ";
-    }
-
-    std::cout << "\nStored:   ";
-
-    if (topNeighbors.empty())
-        std::cout << "NONE";
-
-    for (auto* rectangle : topNeighbors)
-    {
-        std::cout << rectangle << " ";
-    }
-
-    std::cout << "\n";
-
-    // Check missing top neighbors
-    for (auto* expected : expectedTop)
-    {
-        if (std::find(
-            topNeighbors.begin(),
-            topNeighbors.end(),
-            expected) == topNeighbors.end())
-        {
-            std::cout
-                << "ERROR: Missing TOP neighbor: "
-                << expected
-                << "\n";
-
-            correct = false;
-        }
-    }
-
-    // Check extra top neighbors
-    for (auto* stored : topNeighbors)
-    {
-        if (std::find(
-            expectedTop.begin(),
-            expectedTop.end(),
-            stored) == expectedTop.end())
-        {
-            std::cout
-                << "ERROR: Extra TOP neighbor: "
-                << stored
-                << "\n";
-
-            correct = false;
-        }
-    }
-
-    // ---------------------------------
-    // Result
-    // ---------------------------------
-
-    if (correct)
-    {
-        std::cout << "\nRESULT: OK\n";
-    }
-    else
-    {
-        std::cout << "\nRESULT: ERROR\n";
-    }
-
-    std::cout
-        << "================================\n";
-
-    return correct;
-}
+//bool Rectangle::TestNeighbors()
+//{
+//    bool correct = true;
+//
+//    std::vector<Rectangle*> expectedLeft;
+//    std::vector<Rectangle*> expectedTop;
+//
+//    // ---------------------------------
+//    // Calculate expected neighbors
+//    // directly from cells
+//    // ---------------------------------
+//
+//    for (auto* cell : *cells)
+//    {
+//        // LEFT
+//        Rectangle* left = cell->LeftRectangle();
+//
+//        if (left != nullptr &&
+//            left != this)
+//        {
+//            if (std::find(
+//                expectedLeft.begin(),
+//                expectedLeft.end(),
+//                left) == expectedLeft.end())
+//            {
+//                expectedLeft.push_back(left);
+//            }
+//        }
+//
+//        // TOP in your naming convention
+//        // actually means BottomRectangle()
+//        Rectangle* top = cell->BottomRectangle();
+//
+//        if (top != nullptr &&
+//            top != this)
+//        {
+//            if (std::find(
+//                expectedTop.begin(),
+//                expectedTop.end(),
+//                top) == expectedTop.end())
+//            {
+//                expectedTop.push_back(top);
+//            }
+//        }
+//    }
+//
+//    // ---------------------------------
+//    // Print rectangle
+//    // ---------------------------------
+//
+//    std::cout
+//        << "\n================================\n";
+//
+//    std::cout
+//        << "Rectangle: "
+//        << this
+//        << "\n";
+//
+//    if (GetRegion() != nullptr)
+//    {
+//        std::cout
+//            << "Region: "
+//            << GetRegion()
+//            << "\n";
+//
+//        std::cout
+//            << "Mechanic: "
+//            << GetMechanicLayer1()
+//            << "\n";
+//    }
+//
+//    // ---------------------------------
+//    // LEFT
+//    // ---------------------------------
+//
+//    std::cout << "\nLEFT NEIGHBORS\n";
+//
+//    std::cout << "Expected: ";
+//
+//    if (expectedLeft.empty())
+//        std::cout << "NONE";
+//
+//    for (auto* rectangle : expectedLeft)
+//    {
+//        std::cout << rectangle << " ";
+//    }
+//
+//    std::cout << "\nStored:   ";
+//
+//    if (leftNeighbors.empty())
+//        std::cout << "NONE";
+//
+//    for (auto* rectangle : leftNeighbors)
+//    {
+//        std::cout << rectangle << " ";
+//    }
+//
+//    std::cout << "\n";
+//
+//    // Check missing left neighbors
+//    for (auto* expected : expectedLeft)
+//    {
+//        if (std::find(
+//            leftNeighbors.begin(),
+//            leftNeighbors.end(),
+//            expected) == leftNeighbors.end())
+//        {
+//            std::cout
+//                << "ERROR: Missing LEFT neighbor: "
+//                << expected
+//                << "\n";
+//
+//            correct = false;
+//        }
+//    }
+//
+//    // Check extra left neighbors
+//    for (auto* stored : leftNeighbors)
+//    {
+//        if (std::find(
+//            expectedLeft.begin(),
+//            expectedLeft.end(),
+//            stored) == expectedLeft.end())
+//        {
+//            std::cout
+//                << "ERROR: Extra LEFT neighbor: "
+//                << stored
+//                << "\n";
+//
+//            correct = false;
+//        }
+//    }
+//
+//    // ---------------------------------
+//    // TOP
+//    // ---------------------------------
+//
+//    std::cout << "\nTOP NEIGHBORS (BottomRectangle)\n";
+//
+//    std::cout << "Expected: ";
+//
+//    if (expectedTop.empty())
+//        std::cout << "NONE";
+//
+//    for (auto* rectangle : expectedTop)
+//    {
+//        std::cout << rectangle << " ";
+//    }
+//
+//    std::cout << "\nStored:   ";
+//
+//    if (topNeighbors.empty())
+//        std::cout << "NONE";
+//
+//    for (auto* rectangle : topNeighbors)
+//    {
+//        std::cout << rectangle << " ";
+//    }
+//
+//    std::cout << "\n";
+//
+//    // Check missing top neighbors
+//    for (auto* expected : expectedTop)
+//    {
+//        if (std::find(
+//            topNeighbors.begin(),
+//            topNeighbors.end(),
+//            expected) == topNeighbors.end())
+//        {
+//            std::cout
+//                << "ERROR: Missing TOP neighbor: "
+//                << expected
+//                << "\n";
+//
+//            correct = false;
+//        }
+//    }
+//
+//    // Check extra top neighbors
+//    for (auto* stored : topNeighbors)
+//    {
+//        if (std::find(
+//            expectedTop.begin(),
+//            expectedTop.end(),
+//            stored) == expectedTop.end())
+//        {
+//            std::cout
+//                << "ERROR: Extra TOP neighbor: "
+//                << stored
+//                << "\n";
+//
+//            correct = false;
+//        }
+//    }
+//
+//    // ---------------------------------
+//    // Result
+//    // ---------------------------------
+//
+//    if (correct)
+//    {
+//        std::cout << "\nRESULT: OK\n";
+//    }
+//    else
+//    {
+//        std::cout << "\nRESULT: ERROR\n";
+//    }
+//
+//    std::cout
+//        << "================================\n";
+//
+//    return correct;
+//}

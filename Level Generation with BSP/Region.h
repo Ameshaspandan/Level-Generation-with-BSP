@@ -19,7 +19,7 @@ public:
 
 	const Convex& GetConvex() const;
 
-	void AddRecangle(Rectangle*);
+	void AddRectangle(Rectangle*);
 	bool RemoveRecangle(Rectangle*);
 	void SetMechanicLayer0(int Mechanic);
 	void SetMechanicLayer1(int Mechanic);

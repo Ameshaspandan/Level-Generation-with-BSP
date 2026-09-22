@@ -12,7 +12,7 @@ int main()
 {
     Board board{9, 9};
 
-    int levelCount = 50;
+    int levelCount = 100;
 
     std::ofstream file("layouts.csv");
 
