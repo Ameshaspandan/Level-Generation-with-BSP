@@ -297,6 +297,7 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
                     i < rectangle->CountTopNeighbors();
                     i++)
                 {
+                    if (m1Area + rectangle->Area() > largestM1Area) continue;
                     Rectangle* neighbor =
                         rectangle->GetTopNeighbor(i);
 
@@ -356,6 +357,8 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
         }
     }
 
+    if (m1Area > largestM1Area) 
+        return false;
 
     // ------------------------------------------------
     // m2 / m3 / m4 / m5 candidates

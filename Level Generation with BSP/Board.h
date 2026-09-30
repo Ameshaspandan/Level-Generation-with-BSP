@@ -18,7 +18,7 @@ private:
 
 	std::mt19937 rng;
 
-	const int tryLimit = 100;
+	const int tryLimit = 1000;
 	
 
 	const int smallestM0Area = 5;
@@ -98,7 +98,7 @@ public:
 
 	void LevelGenerate(int RectangleCount, int ColorCount, bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu);
 
-	void TestAllRectangleNeighbors();
+	//void TestAllRectangleNeighbors();
 
 	friend std::ostream& operator<<(std::ostream&, const Board&);
 };
