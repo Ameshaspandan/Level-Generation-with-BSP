@@ -28,7 +28,7 @@ int main()
     {
         file << "Layout " << i + 1 << "\n";
         //LevelGenerate(int RectangleCount, int ColorCount, bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
-        board.LevelGenerate(13, 5, true, true, false, true, true, true, false); 
+        board.LevelGenerate(13, 5, true, true, false, false, true, false, false); 
         file << board;
     }
 

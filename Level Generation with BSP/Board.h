@@ -4,6 +4,7 @@
 #include <iostream>
 #include <algorithm>
 #include <random>
+#include <string>
 
 #include "Rectangle.h"
 #include "Cell.h"
@@ -47,7 +48,7 @@ private:
 	}
 
 	void findRegion();
-	void setColorMechanic(std::vector<Rectangle*>* ColorRectangle, int Mechanic);
+	void setColorMechanic(std::vector<Rectangle*>* ColorRectangle, std::string Mechanic);
 	int getColorColorRectangle(std::vector<Rectangle*>* ColorRectangle);
 	bool touchesBoardEdge(Rectangle* Rectangle);
 

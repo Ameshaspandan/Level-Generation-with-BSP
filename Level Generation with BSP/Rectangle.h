@@ -3,6 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
+#include <string>
 
 class Cell;
 class Region;
@@ -11,9 +12,10 @@ class Rectangle
 {
 private:
 	int colorNumber;
-	int mechanicLayer0;
-	int mechanicLayer1;
-	int mechanicLayer2;
+
+	std::string mechanicLayer0;
+	std::string mechanicLayer1;
+	std::string mechanicLayer2;
 
 	std::vector<Cell*>* cells;
 	std::vector<Rectangle*> neighbers;
@@ -50,9 +52,9 @@ public:
 	int CountTopNeighbors() const;
 	int CountLeftNeighbors() const;
 
-	int GetMechanicLayer0() const;
-	int GetMechanicLayer1() const;
-	int GetMechanicLayer2() const;
+	std::string GetMechanicLayer0() const;
+	std::string GetMechanicLayer1() const;
+	std::string GetMechanicLayer2() const;
 	int GetColor() const;
 
 	void ExitCell(Cell* const);
@@ -62,9 +64,9 @@ public:
 	Rectangle* GetTopNeighbor(int) const;
 	Rectangle* GetLeftNeighbor(int) const;
 
-	void SetMechanicLayer0(int MechanicNumber);
-	void SetMechanicLayer1(int MechanicNumber);
-	void SetMechanicLayer2(int MechanicNumber);
+	void SetMechanicLayer0(std::string MechanicNumber);
+	void SetMechanicLayer1(std::string MechanicNumber);
+	void SetMechanicLayer2(std::string MechanicNumber);
 	void SetColor(int ColorNumber);
 
 	Cell* const BaseCell() const;

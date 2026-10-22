@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <string>
 
 #include "Rectangle.h"
 
@@ -21,13 +22,13 @@ public:
 
 	void AddRectangle(Rectangle*);
 	bool RemoveRecangle(Rectangle*);
-	void SetMechanicLayer0(int Mechanic);
-	void SetMechanicLayer1(int Mechanic);
-	void SetMechanicLayer2(int Mechanic);
+	void SetMechanicLayer0(std::string Mechanic);
+	void SetMechanicLayer1(std::string Mechanic);
+	void SetMechanicLayer2(std::string Mechanic);
 	int GetColor() { return convex.at(0)->GetColor(); };
-	int GetMechanicLayer0() { return convex.at(0)->GetMechanicLayer0(); };
-	int GetMechanicLayer1() { return convex.at(0)->GetMechanicLayer1(); };
-	int GetMechanicLayer2() { return convex.at(0)->GetMechanicLayer2(); };
+	std::string GetMechanicLayer0() { return convex.at(0)->GetMechanicLayer0(); };
+	std::string GetMechanicLayer1() { return convex.at(0)->GetMechanicLayer1(); };
+	std::string GetMechanicLayer2() { return convex.at(0)->GetMechanicLayer2(); };
 
 	int Size();
 

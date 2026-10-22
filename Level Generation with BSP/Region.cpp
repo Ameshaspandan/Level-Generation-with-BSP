@@ -37,7 +37,7 @@ bool Region::RemoveRecangle(Rectangle* rectangle)
 	return false;
 }
 
-void Region::SetMechanicLayer0(int Mechanic)
+void Region::SetMechanicLayer0(std::string Mechanic)
 {
 	for (auto* rectangle : convex)
 	{
@@ -45,7 +45,7 @@ void Region::SetMechanicLayer0(int Mechanic)
 	}
 }
 
-void Region::SetMechanicLayer1(int Mechanic)
+void Region::SetMechanicLayer1(std::string Mechanic)
 {
     for (auto* rectangle : convex)
     {
@@ -53,7 +53,7 @@ void Region::SetMechanicLayer1(int Mechanic)
     }
 }
 
-void Region::SetMechanicLayer2(int Mechanic)
+void Region::SetMechanicLayer2(std::string Mechanic)
 {
     for (auto* rectangle : convex)
     {

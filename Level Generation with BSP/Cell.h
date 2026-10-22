@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <string>
 
 class Rectangle;
 
@@ -16,9 +17,9 @@ private:
 public:
 	Cell(int X, int Y, Rectangle* Rectangle, Cell* Left = nullptr, Cell* Top = nullptr);
 
-	int Layer0();
-	int Layer1();
-	int Layer2();
+	std::string Layer0();
+	std::string Layer1();
+	std::string Layer2();
 
 	bool operator<(const Cell& Neighbor) const;
 

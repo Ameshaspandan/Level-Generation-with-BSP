@@ -7,17 +7,17 @@ Cell::Cell(int X, int Y, Rectangle* Rectangle, Cell* Left, Cell* Top) :
 	rectangle = Rectangle;
 }
 
-int Cell::Layer0()
+std::string Cell::Layer0()
 {
 	return rectangle->GetMechanicLayer0();
 }
 
-int Cell::Layer1()
+std::string Cell::Layer1()
 {
 	return rectangle->GetMechanicLayer1();
 }
 
-int Cell::Layer2()
+std::string Cell::Layer2()
 {
 	return  rectangle->GetMechanicLayer2();
 }

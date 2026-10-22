@@ -153,17 +153,17 @@ int Rectangle::CountLeftNeighbors() const
 	return leftNeighbors.size();
 }
 
-int Rectangle::GetMechanicLayer0() const
+std::string Rectangle::GetMechanicLayer0() const
 {
 	return mechanicLayer0;
 }
 
-int Rectangle::GetMechanicLayer1() const
+std::string Rectangle::GetMechanicLayer1() const
 {
     return mechanicLayer1;
 }
 
-int Rectangle::GetMechanicLayer2() const
+std::string Rectangle::GetMechanicLayer2() const
 {
     return mechanicLayer2;
 }
@@ -192,16 +192,16 @@ bool Rectangle::operator==(const Rectangle& rectangle) const
 	return colorNumber == rectangle.colorNumber;
 }
 
-void Rectangle::SetMechanicLayer0(int MechanicNumber) {
-	mechanicLayer0 = MechanicNumber;
+void Rectangle::SetMechanicLayer0(std::string MechanicName) {
+	mechanicLayer0 = MechanicName;
 }
 
-void Rectangle::SetMechanicLayer1(int MechanicNumber) {
-    mechanicLayer1 = MechanicNumber;
+void Rectangle::SetMechanicLayer1(std::string MechanicName) {
+    mechanicLayer1 = MechanicName;
 }
 
-void Rectangle::SetMechanicLayer2(int MechanicNumber) {
-    mechanicLayer2 = MechanicNumber;
+void Rectangle::SetMechanicLayer2(std::string MechanicName) {
+    mechanicLayer2 = MechanicName;
 }
 
 void Rectangle::SetColor(int ColorNumber) {
