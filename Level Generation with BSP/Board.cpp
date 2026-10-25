@@ -3,7 +3,7 @@
 #include <random>
 
 Board::Board(int Width, int Height) :
-    height{ Height }, width{ Width }, rectangles{}, cells{}, minHeight{ 1 }, minWidth{ 1 }, rng{ std::random_device{}() }, regions{}
+    height{ Height }, width{ Width }, rectangles{}, cells{}, minHeight{ 1 }, minWidth{ 1 }, rng{ 12345 }, regions{}
 {
     Rectangle* baseRectangle = new Rectangle(Width, Height);
     rectangles.push_back(baseRectangle);
@@ -29,171 +29,227 @@ Cell* const Board::getCell(int X, int Y) const
 	return cells.at(X + Y * width);
 }
 
+//std::ostream& operator<<(std::ostream& Output, const Board& board)
+//{
+//    const int width = board.width;
+//    const int height = board.height;
+//
+//    if (width < 1 || width > 9 ||
+//        height < 1 || height > 9)
+//    {
+//        throw std::runtime_error(
+//            "Compressed board format only supports width/height from 1 to 9."
+//        );
+//    }
+//
+//    // Sort pointers without modifying board.rectangles.
+//    std::vector<Rectangle*> rectangles = board.rectangles;
+//
+//    std::sort(
+//        rectangles.begin(),
+//        rectangles.end(),
+//        [](const Rectangle* a, const Rectangle* b)
+//        {
+//            const Cell* cellA = a->BaseCell();
+//            const Cell* cellB = b->BaseCell();
+//
+//            if (cellA->Y() != cellB->Y())
+//                return cellA->Y() < cellB->Y();
+//
+//            return cellA->X() < cellB->X();
+//        }
+//    );
+//
+//    // Encode all rectangles for one mechanic layer.
+//    auto encodeLayer = [&](auto getLayerValue) -> std::string
+//        {
+//            std::string result;
+//            result.reserve(rectangles.size() * 3);
+//
+//            for (const Rectangle* rectangle : rectangles)
+//            {
+//                const std::string value = getLayerValue(rectangle);
+//
+//                if (value.size() != 1)
+//                {
+//                    throw std::runtime_error(
+//                        "Layer value must contain exactly one character."
+//                    );
+//                }
+//
+//                const int rectWidth = rectangle->Width();
+//                const int rectHeight = rectangle->Height();
+//
+//                if (rectWidth < 1 || rectWidth > 9 ||
+//                    rectHeight < 1 || rectHeight > 9)
+//                {
+//                    throw std::runtime_error(
+//                        "Compressed rectangle dimensions must be from 1 to 9."
+//                    );
+//                }
+//
+//                result += value[0];
+//                result += static_cast<char>('0' + rectWidth);
+//                result += static_cast<char>('0' + rectHeight);
+//            }
+//
+//            return result;
+//        };
+//
+//    Output << width << 'x' << height << '/';
+//
+//    Output << encodeLayer(
+//        [](const Rectangle* rectangle)
+//        {
+//            return rectangle->GetMechanicLayer0();
+//        }
+//    );
+//
+//    Output << '/';
+//
+//    Output << encodeLayer(
+//        [](const Rectangle* rectangle)
+//        {
+//            return rectangle->GetMechanicLayer1();
+//        }
+//    );
+//
+//    Output << '/';
+//
+//    Output << encodeLayer(
+//        [](const Rectangle* rectangle)
+//        {
+//            return rectangle->GetMechanicLayer2();
+//        }
+//    );
+//
+//    return Output;
+//}
+
 std::ostream& operator<<(std::ostream& Output, const Board& board)
 {
-    // Current compact format uses one digit for width/height.
-    // Example:
-    // 99A68B19C29D61/A99/B99
-    if (board.width < 1 || board.width > 9 ||
-        board.height < 1 || board.height > 9)
+    const int width = board.width;
+    const int height = board.height;
+
+    if (width < 1 || width > 9 ||
+        height < 1 || height > 9)
     {
         throw std::runtime_error(
             "Compressed board format only supports width/height from 1 to 9."
         );
     }
 
-    // ---------------------------------------------------------
+    const int cellCount = width * height;
+
     // Encode one layer.
-    //
-    // Rectangle format:
-    //
-    // [value][width][height]
-    //
-    // Rectangles are always placed starting from the first
-    // unused cell, scanning:
-    //
-    // left -> right
-    // top  -> bottom
-    // ---------------------------------------------------------
-    auto encodeLayer = [&](auto getLayerValue)
+    auto encodeLayer = [&](auto getLayerValue) -> std::string
         {
-            std::vector<std::vector<bool>> used(
-                board.height,
-                std::vector<bool>(board.width, false)
-            );
+            // Cache each cell's value. Every cell is queried only once.
+            std::vector<char> values(cellCount);
+
+            for (int y = 0; y < height; ++y)
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    std::string value =
+                        getLayerValue(board.getCell(x, y));
+
+                    //if (value.size() != 1)
+                    //{
+                    //    throw std::runtime_error(
+                    //        "Layer value must contain exactly one character."
+                    //    );
+                    //}
+
+                    values[y * width + x] = value[0];
+                }
+            }
+
+            // Flat grid instead of vector<vector<bool>>.
+            std::vector<unsigned char> used(cellCount, 0);
 
             std::string result;
+            result.reserve(cellCount * 3);
 
-            while (true)
+            // Linear row-major cursor.
+            int cursor = 0;
+
+            while (cursor < cellCount)
             {
-                // ---------------------------------------------
                 // Find first unused cell.
-                // ---------------------------------------------
-                int startX = -1;
-                int startY = -1;
+                while (cursor < cellCount && used[cursor])
+                    ++cursor;
 
-                for (int y = 0; y < board.height; ++y)
-                {
-                    for (int x = 0; x < board.width; ++x)
-                    {
-                        if (!used[y][x])
-                        {
-                            startX = x;
-                            startY = y;
-                            break;
-                        }
-                    }
-
-                    if (startX != -1)
-                        break;
-                }
-
-                // Entire layer encoded.
-                if (startX == -1)
+                if (cursor == cellCount)
                     break;
 
+                const int startX = cursor % width;
+                const int startY = cursor / width;
+                const char value = values[cursor];
 
-                // ---------------------------------------------
-                // Get mechanic/value of this cell.
-                // ---------------------------------------------
-                std::string value =
-                    getLayerValue(board.getCell(startX, startY));
-
-                // Your compact format requires one character
-                // for each cell value.
-                if (value.size() != 1)
-                {
-                    throw std::runtime_error(
-                        "Layer value must contain exactly one character."
-                    );
-                }
-
-
-                // ---------------------------------------------
-                // Find largest rectangle of this value that:
-                //
-                // 1. starts at first unused cell
-                // 2. contains only the same value
-                // 3. does not overlap already encoded cells
-                // ---------------------------------------------
                 int bestWidth = 1;
                 int bestHeight = 1;
                 int bestArea = 1;
 
+                // Extend the rectangle downward one row at a time.
+                // maxWidth is the maximum width valid for all rows
+                // included in the current rectangle.
+                int maxWidth = width - startX;
+
                 for (int rectHeight = 1;
-                    startY + rectHeight <= board.height;
+                    startY + rectHeight <= height;
                     ++rectHeight)
                 {
-                    for (int rectWidth = 1;
-                        startX + rectWidth <= board.width;
-                        ++rectWidth)
+                    const int rowStart =
+                        (startY + rectHeight - 1) * width + startX;
+
+                    // Count the contiguous valid cells in this row.
+                    int rowWidth = 0;
+
+                    while (rowWidth < maxWidth)
                     {
-                        bool valid = true;
+                        const int index = rowStart + rowWidth;
 
-                        for (int y = startY;
-                            y < startY + rectHeight && valid;
-                            ++y)
-                        {
-                            for (int x = startX;
-                                x < startX + rectWidth;
-                                ++x)
-                            {
-                                if (used[y][x])
-                                {
-                                    valid = false;
-                                    break;
-                                }
+                        if (used[index] || values[index] != value)
+                            break;
 
-                                if (getLayerValue(board.getCell(x, y))
-                                    != value)
-                                {
-                                    valid = false;
-                                    break;
-                                }
-                            }
-                        }
+                        ++rowWidth;
+                    }
 
-                        if (!valid)
-                            continue;
+                    // Every additional row can only maintain or
+                    // reduce the valid rectangle width.
+                    maxWidth = rowWidth;
 
-                        int area =
-                            rectWidth * rectHeight;
+                    if (maxWidth == 0)
+                        break;
 
-                        if (area > bestArea)
-                        {
-                            bestArea = area;
-                            bestWidth = rectWidth;
-                            bestHeight = rectHeight;
-                        }
+                    const int area = maxWidth * rectHeight;
+
+                    // Strict comparison preserves the original
+                    // tie-breaking behavior.
+                    if (area > bestArea)
+                    {
+                        bestArea = area;
+                        bestWidth = maxWidth;
+                        bestHeight = rectHeight;
                     }
                 }
 
-
-                // ---------------------------------------------
-                // Mark this rectangle as encoded.
-                // ---------------------------------------------
+                // Mark the selected rectangle.
                 for (int y = startY;
                     y < startY + bestHeight;
                     ++y)
                 {
-                    for (int x = startX;
-                        x < startX + bestWidth;
-                        ++x)
+                    const int rowStart = y * width + startX;
+
+                    for (int x = 0; x < bestWidth; ++x)
                     {
-                        used[y][x] = true;
+                        used[rowStart + x] = 1;
                     }
                 }
 
-
-                // ---------------------------------------------
-                // Add:
-                //
-                // value + width + height
-                //
-                // Example:
-                // A68
-                // ---------------------------------------------
-                result += value[0];
+                // Encode value + width + height.
+                result += value;
                 result += static_cast<char>('0' + bestWidth);
                 result += static_cast<char>('0' + bestHeight);
             }
@@ -201,25 +257,8 @@ std::ostream& operator<<(std::ostream& Output, const Board& board)
             return result;
         };
 
+    Output << width << 'x' << height << '/';
 
-    // ---------------------------------------------------------
-    // Layout size
-    //
-    // Example:
-    // width=9, height=9
-    // -> 99
-    // ---------------------------------------------------------
-    Output
-        << board.width
-        << board.height;
-
-
-    // ---------------------------------------------------------
-    // Layer -1
-    //
-    // In your current Board:
-    // Layer0() is printed as Layer -1.
-    // ---------------------------------------------------------
     Output << encodeLayer(
         [](const Cell* cell)
         {
@@ -227,15 +266,8 @@ std::ostream& operator<<(std::ostream& Output, const Board& board)
         }
     );
 
+    Output << '/';
 
-    Output << "/";
-
-
-    // ---------------------------------------------------------
-    // Layer 0
-    //
-    // Layer1()
-    // ---------------------------------------------------------
     Output << encodeLayer(
         [](const Cell* cell)
         {
@@ -243,22 +275,14 @@ std::ostream& operator<<(std::ostream& Output, const Board& board)
         }
     );
 
+    Output << '/';
 
-    Output << "/";
-
-
-    // ---------------------------------------------------------
-    // Layer +1
-    //
-    // Layer2()
-    // ---------------------------------------------------------
     Output << encodeLayer(
         [](const Cell* cell)
         {
             return cell->GetRectangle()->GetMechanicLayer2();
         }
     );
-
 
     return Output;
 }
@@ -421,7 +445,7 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
         region->SetMechanicLayer2("0");
     }
 
-    std::vector<std::string> m{"A", "B", "C", "D", "E", "F", "G", "H"};
+    std::vector<std::string> m{"0", "A", "B", "C", "D", "E", "AA", "AAA"};
     std::vector<Region*> availableRegions{ regions };
 
     // ------------------------------------------------
