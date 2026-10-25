@@ -35,6 +35,18 @@ private:
 	const int largestMdArea = 50;
 	const int largestMuArea = 50;
 
+	const std::string M0 = "0";
+	const std::string M1 = "A";
+	const std::string M2 = "B";
+	const std::string M3 = "C";
+	const std::string M4 = "D";
+	const std::string M5 = "E";
+
+	const std::string Md = "AA";
+	const std::string Mu = "AAA";
+
+	std::vector<std::string> m{ M0, M1, M2, M3, M4, M5, Md, Mu };
+
 	void mesh(int RectangleCount);
 	bool paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu);
 

@@ -267,16 +267,17 @@ int main(int argc, char* argv[])
 
         while (std::getline(file, line))
         {
-            if (line.rfind("Layout ", 0) == 0)
-            {
-                std::string layout;
+            //std::string layout;
+            existingLayouts.insert(line);
+            ++layoutCount;
+            //if (std::getline(file, layout))
+            //{
 
-                if (std::getline(file, layout))
-                {
-                    existingLayouts.insert(layout);
-                    ++layoutCount;
-                }
-            }
+            //}
+            //if (line.rfind("Layout ", 0) == 0)
+            //{
+
+            //}
         }
     }
 
@@ -370,7 +371,7 @@ int main(int argc, char* argv[])
     {
         if (existingLayouts.insert(layout).second)
         {
-            file << "Layout " << ++layoutCount << '\n';
+            //file << "Layout " << ++layoutCount << '\n';
             file << layout << '\n';
 
             ++addedCount;

@@ -3,7 +3,7 @@
 #include <random>
 
 Board::Board(int Width, int Height) :
-    height{ Height }, width{ Width }, rectangles{}, cells{}, minHeight{ 1 }, minWidth{ 1 }, rng{ 12345 }, regions{}
+    height{ Height }, width{ Width }, rectangles{}, cells{}, minHeight{ 1 }, minWidth{ 1 }, rng{ std::random_device{}() }, regions{}
 {
     Rectangle* baseRectangle = new Rectangle(Width, Height);
     rectangles.push_back(baseRectangle);
@@ -141,11 +141,14 @@ std::ostream& operator<<(std::ostream& Output, const Board& board)
 
     const int cellCount = width * height;
 
-    // Encode one layer.
     auto encodeLayer = [&](auto getLayerValue) -> std::string
         {
-            // Cache each cell's value. Every cell is queried only once.
-            std::vector<char> values(cellCount);
+            // IMPORTANT:
+            // Mechanics can be:
+            // 0, A, B, C, D, E, AA, AAA
+            //
+            // Therefore this must be std::string, not char.
+            std::vector<std::string> values(cellCount);
 
             for (int y = 0; y < height; ++y)
             {
@@ -154,48 +157,56 @@ std::ostream& operator<<(std::ostream& Output, const Board& board)
                     std::string value =
                         getLayerValue(board.getCell(x, y));
 
-                    //if (value.size() != 1)
-                    //{
-                    //    throw std::runtime_error(
-                    //        "Layer value must contain exactly one character."
-                    //    );
-                    //}
+                    if (value.empty())
+                    {
+                        throw std::runtime_error(
+                            "Cell mechanic cannot be empty."
+                        );
+                    }
 
-                    values[y * width + x] = value[0];
+                    values[y * width + x] = value;
                 }
             }
 
-            // Flat grid instead of vector<vector<bool>>.
             std::vector<unsigned char> used(cellCount, 0);
 
             std::string result;
-            result.reserve(cellCount * 3);
 
-            // Linear row-major cursor.
+            // Just an estimate; strings like AAA use more than 3 chars.
+            result.reserve(cellCount * 4);
+
             int cursor = 0;
 
             while (cursor < cellCount)
             {
+                // -------------------------------------------------
                 // Find first unused cell.
+                // -------------------------------------------------
                 while (cursor < cellCount && used[cursor])
+                {
                     ++cursor;
+                }
 
                 if (cursor == cellCount)
                     break;
 
                 const int startX = cursor % width;
                 const int startY = cursor / width;
-                const char value = values[cursor];
+
+                const std::string& value =
+                    values[cursor];
 
                 int bestWidth = 1;
                 int bestHeight = 1;
                 int bestArea = 1;
 
-                // Extend the rectangle downward one row at a time.
-                // maxWidth is the maximum width valid for all rows
-                // included in the current rectangle.
+                // Maximum possible width for current height.
                 int maxWidth = width - startX;
 
+                // -------------------------------------------------
+                // Find largest rectangle starting at first
+                // unused cell containing the same mechanic.
+                // -------------------------------------------------
                 for (int rectHeight = 1;
                     startY + rectHeight <= height;
                     ++rectHeight)
@@ -203,30 +214,30 @@ std::ostream& operator<<(std::ostream& Output, const Board& board)
                     const int rowStart =
                         (startY + rectHeight - 1) * width + startX;
 
-                    // Count the contiguous valid cells in this row.
                     int rowWidth = 0;
 
                     while (rowWidth < maxWidth)
                     {
-                        const int index = rowStart + rowWidth;
+                        const int index =
+                            rowStart + rowWidth;
 
-                        if (used[index] || values[index] != value)
+                        if (used[index] ||
+                            values[index] != value)
+                        {
                             break;
+                        }
 
                         ++rowWidth;
                     }
 
-                    // Every additional row can only maintain or
-                    // reduce the valid rectangle width.
                     maxWidth = rowWidth;
 
                     if (maxWidth == 0)
                         break;
 
-                    const int area = maxWidth * rectHeight;
+                    const int area =
+                        maxWidth * rectHeight;
 
-                    // Strict comparison preserves the original
-                    // tie-breaking behavior.
                     if (area > bestArea)
                     {
                         bestArea = area;
@@ -235,54 +246,105 @@ std::ostream& operator<<(std::ostream& Output, const Board& board)
                     }
                 }
 
-                // Mark the selected rectangle.
+                // -------------------------------------------------
+                // Mark selected rectangle as used.
+                // -------------------------------------------------
                 for (int y = startY;
                     y < startY + bestHeight;
                     ++y)
                 {
-                    const int rowStart = y * width + startX;
+                    const int rowStart =
+                        y * width + startX;
 
-                    for (int x = 0; x < bestWidth; ++x)
+                    for (int x = 0;
+                        x < bestWidth;
+                        ++x)
                     {
                         used[rowStart + x] = 1;
                     }
                 }
 
-                // Encode value + width + height.
+                // -------------------------------------------------
+                // mechanic + width + height
+                //
+                // Examples:
+                //
+                // A34
+                // AA21
+                // AAA13
+                // 099
+                // -------------------------------------------------
                 result += value;
-                result += static_cast<char>('0' + bestWidth);
-                result += static_cast<char>('0' + bestHeight);
+
+                result +=
+                    static_cast<char>('0' + bestWidth);
+
+                result +=
+                    static_cast<char>('0' + bestHeight);
             }
 
             return result;
         };
 
-    Output << width << 'x' << height << '/';
+
+    // =========================================================
+    // WIDTH x HEIGHT
+    // =========================================================
+
+    Output
+        << width
+        << 'x'
+        << height
+        << '/';
+
+
+    // =========================================================
+    // Layer -1
+    // =========================================================
 
     Output << encodeLayer(
         [](const Cell* cell)
         {
-            return cell->GetRectangle()->GetMechanicLayer0();
+            return cell
+                ->GetRectangle()
+                ->GetMechanicLayer0();
         }
     );
+
 
     Output << '/';
 
+
+    // =========================================================
+    // Layer 0
+    // =========================================================
+
     Output << encodeLayer(
         [](const Cell* cell)
         {
-            return cell->GetRectangle()->GetMechanicLayer1();
+            return cell
+                ->GetRectangle()
+                ->GetMechanicLayer1();
         }
     );
+
 
     Output << '/';
 
+
+    // =========================================================
+    // Layer +1
+    // =========================================================
+
     Output << encodeLayer(
         [](const Cell* cell)
         {
-            return cell->GetRectangle()->GetMechanicLayer2();
+            return cell
+                ->GetRectangle()
+                ->GetMechanicLayer2();
         }
     );
+
 
     return Output;
 }
@@ -445,7 +507,6 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
         region->SetMechanicLayer2("0");
     }
 
-    std::vector<std::string> m{"0", "A", "B", "C", "D", "E", "AA", "AAA"};
     std::vector<Region*> availableRegions{ regions };
 
     // ------------------------------------------------
@@ -498,30 +559,28 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
 
         for (auto* region : availableRegions)
         {
+            if (m1Area + region->Area() > largestM1Area)
+                continue;
+
             bool valid = true;
 
             for (auto* rectangle : region->GetConvex())
             {
                 for (int i = 0;
                     i < rectangle->CountTopNeighbors();
-                    i++)
+                    ++i)
                 {
-                    if (m1Area + rectangle->Area() > largestM1Area) continue;
                     Rectangle* neighbor =
                         rectangle->GetTopNeighbor(i);
 
-                    // Ignore rectangles belonging
-                    // to the same region.
                     if (neighbor->GetRegion() == region)
                         continue;
 
                     std::string mechanic =
                         neighbor->GetMechanicLayer1();
 
-                    // Existing external Top neighbors
-                    // must be m0 or m1.
-                    if (mechanic != m.at(0) &&
-                        mechanic != m.at(1))
+                    if (mechanic != "0" &&
+                        mechanic != "A")
                     {
                         valid = false;
                         break;
@@ -533,9 +592,7 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
             }
 
             if (valid)
-            {
                 m1Candidates.push_back(region);
-            }
         }
 
         if (m1Candidates.empty())
@@ -825,7 +882,7 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
 
             if (select)
             {
-                if (mdArea + region->Area() < largestMdArea)
+                if (mdArea + region->Area() <= largestMdArea)
                 {
                     region->SetMechanicLayer0(m.at(6));
                     mdArea += region->Area();
@@ -849,7 +906,7 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
 
             if (select)
             {
-                if (muArea + region->Area() < largestMuArea)
+                if (muArea + region->Area() <= largestMuArea)
                 {
                     region->SetMechanicLayer2(m.at(7));
                     muArea += region->Area();
@@ -956,7 +1013,6 @@ void Board::LevelGenerate(int RectangleCount, int ColorCount,bool M0, bool M2, b
 
 bool Board::isM2Candidate(Region* region)
 {
-    std::vector<std::string> m{ "A", "B", "C", "D", "E", "F", "G", "H" };
     for (auto* rectangle : region->GetConvex())
     {
         for (int i = 0; i < rectangle->CountTopNeighbors(); i++)
@@ -987,7 +1043,6 @@ bool Board::isM2Candidate(Region* region)
 
 bool Board::isM4Candidate(Region* region)
 {
-    std::vector<std::string> m{ "A", "B", "C", "D", "E", "F", "G", "H" };
 
     bool leftValid = true;
     bool rightValid = true;
@@ -1082,7 +1137,6 @@ bool Board::isM4Candidate(Region* region)
 
 bool Board::isM3Candidate(Region* region)
 {
-    std::vector<std::string> m{ "A", "B", "C", "D", "E", "F", "G", "H" };
     for (auto* rectangle : region->GetConvex())
     {
         for (int i = 0; i < rectangle->CountTopNeighbors(); i++)
@@ -1120,16 +1174,10 @@ bool Board::isM3Candidate(Region* region)
 
 bool Board::isMuCandidate(Region* region)
 {
-    std::vector<std::string> m{ "A", "B", "C", "D", "E", "F", "G", "H" };
-    if (region->GetConvex()[0]->GetMechanicLayer1() == m.at(1)) return false;
-   
-    return true;
+    return region->GetMechanicLayer1() != m.at(1);
 }
 
 bool Board::isMdCandidate(Region* region)
 {
-    std::vector<std::string> m{ "A", "B", "C", "D", "E", "F", "G", "H" };
-    if (region->GetConvex()[0]->GetMechanicLayer1() == m.at(4)) return false;
-
-    return true;
+    return region->GetMechanicLayer1() != m.at(4);
 }
