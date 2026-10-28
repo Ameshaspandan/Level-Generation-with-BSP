@@ -33,6 +33,8 @@ private:
 	const int minWidth = 1, minHeight = 1;
 
 public:
+	Rectangle(const Rectangle&) = delete;
+	Rectangle& operator=(const Rectangle&) = delete;
 	Rectangle(std::vector<Cell*>* Cells);
 	Rectangle(int Width, int Height);
 	~Rectangle();
@@ -71,7 +73,7 @@ public:
 
 	Cell* const BaseCell() const;
 
-	inline int Area() const;
+	int Area() const;
 
 	Cell* getCell(int X, int Y);
 

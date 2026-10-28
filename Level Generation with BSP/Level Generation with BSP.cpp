@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <cctype>
 #include <map>
+#include <mutex>
+#include <exception>
 
 #include "Board.h"
 
@@ -212,6 +214,7 @@ int main(int argc, char* argv[])
     int colorCount;
 
     bool M0, M2, M3, M4, M5, Md, Mu;
+    bool verticalSymmetry = false;
 
     try
     {
@@ -222,6 +225,8 @@ int main(int argc, char* argv[])
         boardHeight = ReadInt(config, "Generation.height");
         rectangleCount = ReadInt(config, "Generation.rectangleCount");
         colorCount = ReadInt(config, "Generation.colorCount");
+        if (config.count("Generation.verticalSymmetry"))
+            verticalSymmetry = ReadBool(config, "Generation.verticalSymmetry");
 
         M0 = ReadBool(config, "Mechanics.M0");
         M2 = ReadBool(config, "Mechanics.M2");
@@ -246,6 +251,13 @@ int main(int argc, char* argv[])
     {
         std::cerr
             << "All numeric configuration values must be positive.\n";
+        return 1;
+    }
+
+    if (!Board::IsSupportedSize(boardWidth, boardHeight) ||
+        rectangleCount > boardWidth * boardHeight || colorCount > rectangleCount)
+    {
+        std::cerr << "Supported sizes: 9x9, 9x10, 9x11, 8x11; require colors <= rectangles <= cells.\n";
         return 1;
     }
 
@@ -290,6 +302,9 @@ int main(int argc, char* argv[])
 
     std::atomic<int> nextIndex{ 0 };
     std::atomic<int> completed{ 0 };
+    std::atomic<bool> failed{ false };
+    std::mutex errorMutex;
+    std::exception_ptr workerError;
 
     const unsigned int hardwareThreads =
         std::max(1u, std::thread::hardware_concurrency());
@@ -304,7 +319,8 @@ int main(int argc, char* argv[])
     {
         threads.emplace_back([&]()
             {
-                while (true)
+                try {
+                while (!failed.load())
                 {
                     const int index =
                         nextIndex.fetch_add(1, std::memory_order_relaxed);
@@ -317,7 +333,7 @@ int main(int argc, char* argv[])
                     board.LevelGenerate(
                         rectangleCount,
                         colorCount,
-                        M0, M2, M3, M4, M5, Md, Mu
+                        M0, M2, M3, M4, M5, Md, Mu, verticalSymmetry
                     );
 
                     std::ostringstream stream;
@@ -327,6 +343,11 @@ int main(int argc, char* argv[])
 
                     completed.fetch_add(1, std::memory_order_relaxed);
                 }
+                } catch (...) {
+                    std::lock_guard<std::mutex> lock(errorMutex);
+                    if (!workerError) workerError = std::current_exception();
+                    failed.store(true);
+                }
             });
     }
 
@@ -334,7 +355,7 @@ int main(int argc, char* argv[])
 
     int lastProgress = -1;
 
-    while (completed.load(std::memory_order_relaxed) < levelCount)
+    while (!failed.load() && completed.load(std::memory_order_relaxed) < levelCount)
     {
         const int progress =
             completed.load(std::memory_order_relaxed);
@@ -353,6 +374,12 @@ int main(int argc, char* argv[])
     for (auto& t : threads)
         t.join();
 
+    if (workerError) {
+        try { std::rethrow_exception(workerError); }
+        catch (const std::exception& e) { std::cerr << "\nGeneration failed: " << e.what() << '\n'; }
+        catch (...) { std::cerr << "\nGeneration failed with an unknown error.\n"; }
+        return 1;
+    }
     ShowProgress(levelCount, levelCount);
 
     // 4. Append only unique layouts.

@@ -1,10 +1,13 @@
 #include "Board.h"
 #include <iomanip>
+#include <functional>
+#include <stdexcept>
 #include <random>
 
 Board::Board(int Width, int Height) :
     height{ Height }, width{ Width }, rectangles{}, cells{}, minHeight{ 1 }, minWidth{ 1 }, rng{ std::random_device{}() }, regions{}
 {
+    if (!IsSupportedSize(Width, Height)) throw std::invalid_argument("Supported sizes: 9x9, 9x10, 9x11, 8x11.");
     Rectangle* baseRectangle = new Rectangle(Width, Height);
     rectangles.push_back(baseRectangle);
 
@@ -13,15 +16,12 @@ Board::Board(int Width, int Height) :
 
 Board::~Board()
 {
+    for (auto* region : regions) delete region;
     for (int n = 0; n < rectangles.size(); n++)
     {
         delete rectangles.at(n);
     }
 
-    for (int i = 0; i < regions.size(); i++)
-    {
-        delete regions.at(i);
-    }
 }
 
 Cell* const Board::getCell(int X, int Y) const
@@ -523,6 +523,8 @@ std::ostream& operator<<(std::ostream& Output, const Board& board)
 
 void Board::mesh(int ColorCount)
 {
+    if (ColorCount < 1 || ColorCount > static_cast<int>(rectangles.size()))
+        throw std::invalid_argument("Color count exceeds available rectangles.");
     rectangleSort();
 
     for (int i = 0; i < rectangles.size(); i++)
@@ -530,7 +532,7 @@ void Board::mesh(int ColorCount)
         rectangles.at(i)->SetColor(i);
     }
 
-    for (int n = 0; n < rectangles.size() - ColorCount; n++)
+    for (int n = 0; n < static_cast<int>(rectangles.size()) - ColorCount; n++)
     {
         std::vector<Rectangle*> validRectangles;
 
@@ -603,6 +605,7 @@ void Board::mesh(int ColorCount)
 
 void Board::findRegion()
 {
+    for (auto* rectangle : rectangles) rectangle->SetRegion(nullptr);
     // Clear previous color groups
     for (auto* region : regions)
     {
@@ -684,34 +687,36 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
     // ------------------------------------------------
     // m0 -> sum of smaller Regions
     // ------------------------------------------------
-
-    int m0Area{};
     
-    while (m0Area < smallestM0Area)
+    if (M0)
     {
-        if (availableRegions.empty())
-            return false;
-
-        int smallestRegionArea = availableRegions.at(0)->Area();
-        int indexM0 = 0;
-
-        //index starts 1 that scape smallest region
-        for (int i = 1; i < static_cast<int>(availableRegions.size()); i++)
+        int m0Area{};
+        while (m0Area < smallestM0Area)
         {
-            if (availableRegions.at(i)->Area() < smallestRegionArea)
+            if (availableRegions.empty())
+                return false;
+
+            int smallestRegionArea = availableRegions.at(0)->Area();
+            int indexM0 = 0;
+
+            //index starts 1 that scape smallest region
+            for (int i = 1; i < static_cast<int>(availableRegions.size()); i++)
             {
-                indexM0 = i;
-                smallestRegionArea = availableRegions.at(i)->Area();
+                if (availableRegions.at(i)->Area() < smallestRegionArea)
+                {
+                    indexM0 = i;
+                    smallestRegionArea = availableRegions.at(i)->Area();
+                }
             }
+
+            availableRegions.at(indexM0)->SetMechanicLayer1(m.at(0));
+
+            m0Area += availableRegions.at(indexM0)->Area();
+
+            availableRegions.erase(
+                availableRegions.begin() + indexM0
+            );
         }
-
-        availableRegions.at(indexM0)->SetMechanicLayer1(m.at(0));
-
-        m0Area += availableRegions.at(indexM0)->Area();
-
-        availableRegions.erase(
-            availableRegions.begin() + indexM0
-        );
     }
 
     //-------------------------------------------------
@@ -799,389 +804,150 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
     if (m1Area > largestM1Area) 
         return false;
 
-    // ------------------------------------------------
-    // m2 / m3 / m4 / m5 candidates
-    // ------------------------------------------------
-
-    std::vector<Region*> m2Candidates{};
-    std::vector<Region*> m3Candidates{};
-    std::vector<Region*> m4Candidates{};
-    std::vector<Region*> m5Candidates{};
-    std::vector<Region*> mdCandidates{};
-    std::vector<Region*> muCandidates{};
-
-    int countSelectedMechanicsLayer0 = 0;
-    int countSelectedMechanicsLayer1 = 0;
-    int countSelectedMechanicsLayer2 = 0;
-
-
-    // m2 can use every remaining region
-    if (M2)
-    {
-        countSelectedMechanicsLayer1++;
-
-        for (auto* region : availableRegions)
-        {
-            if (isM2Candidate(region))
-            {
-                m2Candidates.push_back(region);
+    // Bounded constraint search permits mechanics to repeat and checks
+    // neighboring assignments as they become known.
+    std::vector<int> enabled;
+    if (M2) enabled.push_back(2);
+    if (M3) enabled.push_back(3);
+    if (M4) enabled.push_back(4);
+    if (M5) enabled.push_back(5);
+    const int minimum[] = {0, 0, smallestM2Area, smallestM3Area, smallestM4Area, smallestM5Area};
+    int assignedArea[6] = {};
+    int nodes = 0;
+    auto partialValid = [&]() {
+        for (auto* region : regions) {
+            const auto mechanic = region->GetMechanicLayer1();
+            if (mechanic == m[2] || mechanic == m[3] || mechanic == m[5]) {
+                if (mechanic == m[5] && !region->IsEvenRectangle()) return false;
+                for (auto* rectangle : region->GetConvex())
+                    for (int i=0; i<rectangle->CountTopNeighbors(); ++i) {
+                        auto* neighbor = rectangle->GetTopNeighbor(i);
+                        if (neighbor->GetRegion() == region) continue;
+                        const auto top = neighbor->GetMechanicLayer1();
+                        if (top == "-1" || top == m[0] || top == m[1] || top == m[2]) continue;
+                        if (mechanic != m[2] && (top == m[3] || top == m[5])) continue;
+                        return false;
+                    }
             }
-        }
-    }
-
-
-    // m3 can use every remaining region
-    if (M3)
-    {
-        countSelectedMechanicsLayer1++;
-
-        for (auto* candidate : availableRegions)
-        {
-            if (candidate->GetMechanicLayer1() != "-1")
-                continue;
-
-            if (isM3Candidate(candidate))
-            {
-                m3Candidates.push_back(candidate);
-            }
-        }
-    }
-
-
-    // m4 can use every remaining region
-    if (M4)
-    {
-        countSelectedMechanicsLayer1++;
-
-        for (auto* region : availableRegions)
-        {
-            if (isM4Candidate(region))
-            {
-                m4Candidates.push_back(region);
-            }
-        }
-    }
-
-
-    // m5 only accepts even rectangular regions
-    if (M5)
-    {
-        countSelectedMechanicsLayer1++;
-
-        for (auto* region : availableRegions)
-        {
-            if (region->IsEvenRectangle() && isM3Candidate(region))
-            {
-                m5Candidates.push_back(region);
-            }
-        }
-    }
-
-
-    // ------------------------------------------------
-    // Validate candidates
-    // ------------------------------------------------
-
-    if (M2 && m2Candidates.empty())
-        return false;
-
-    if (M3 && m3Candidates.empty())
-        return false;
-
-    if (M4 && m4Candidates.empty())
-        return false;
-
-    if (M5 && m5Candidates.empty())
-        return false;
-
-
-    // ------------------------------------------------
-    // Assign m2 / m3 / m4 / m5 / Md / Mu
-    // ------------------------------------------------
-
-    std::vector<std::string> validIndeces;
-    std::vector<std::string> selected;
-
-    for (auto* region : availableRegions)
-    {
-        validIndeces.clear();
-
-        if (selected.size() ==
-            static_cast<size_t>(countSelectedMechanicsLayer1))
-        {
-            selected.clear();
-        }
-
-
-        // ----------------
-        // m5
-        // ----------------
-
-        if (M5 &&
-            std::find(
-                selected.begin(),
-                selected.end(),
-                m.at(5)
-            ) == selected.end() &&
-            std::find(
-                m5Candidates.begin(),
-                m5Candidates.end(),
-                region
-            ) != m5Candidates.end())
-        {
-            validIndeces.push_back(m.at(5));
-        }
-
-
-        // ----------------
-        // m2
-        // ----------------
-
-        if (M2 &&
-            std::find(
-                selected.begin(),
-                selected.end(),
-                m.at(2)
-            ) == selected.end() &&
-            std::find(
-                m2Candidates.begin(),
-                m2Candidates.end(),
-                region
-            ) != m2Candidates.end())
-        {
-            validIndeces.push_back(m.at(2));
-        }
-
-
-        // ----------------
-        // m3
-        // ----------------
-
-        if (M3 &&
-            std::find(
-                selected.begin(),
-                selected.end(),
-                m.at(3)
-            ) == selected.end() &&
-            std::find(
-                m3Candidates.begin(),
-                m3Candidates.end(),
-                region
-            ) != m3Candidates.end())
-        {
-            validIndeces.push_back(m.at(3));
-        }
-
-
-        // ----------------
-        // m4
-        // ----------------
-
-        if (M4 &&
-            std::find(
-                selected.begin(),
-                selected.end(),
-                m.at(4)
-            ) == selected.end() &&
-            std::find(
-                m4Candidates.begin(),
-                m4Candidates.end(),
-                region
-            ) != m4Candidates.end())
-        {
-            validIndeces.push_back(m.at(4));
-        }
-
-        // No mechanic can be assigned to this region.
-        if (validIndeces.empty())
-        {
-            return false;
-        }
-
-
-        int index =
-            randomInt(
-                0,
-                static_cast<int>(validIndeces.size()) - 1
-            );
-
-        std::string selectedMechanic =
-            validIndeces.at(index);
-
-        selected.push_back(selectedMechanic);
-
-        region->SetMechanicLayer1(selectedMechanic);
-    }
-
-    // Md & Mu Candidate
-    if (Md)
-    {
-        countSelectedMechanicsLayer0++;
-
-        for (auto* region : upDownLayer)
-        {
-            if (isMdCandidate(region))
-            {
-                mdCandidates.push_back(region);
-            }
-        }
-    }
-
-    if (Mu)
-    {
-        countSelectedMechanicsLayer2++;
-
-        for (auto* region : upDownLayer)
-        {
-            if (isMuCandidate(region))
-            {
-                muCandidates.push_back(region);
-            }
-        }
-    }
-
-    //Md
-    int mdArea{};
-
-    if (Md)
-    {
-        for (auto* region : mdCandidates)
-        {
-            //-------------------
-            //Md
-            //-------------------
-
-            bool select = randomInt(0, 1) == 0 ? false : true;
-
-            if (select)
-            {
-                if (mdArea + region->Area() <= largestMdArea)
-                {
-                    region->SetMechanicLayer0(m.at(6));
-                    mdArea += region->Area();
+            if (mechanic == m[4]) {
+                bool left = true, right = true;
+                auto allowed = [&](Rectangle* r) {
+                    auto value = r->GetMechanicLayer1();
+                    return value == "-1" || value == m[0] || value == m[4];
+                };
+                for (auto* rectangle : region->GetConvex())
+                    for (int i=0; i<rectangle->CountLeftNeighbors(); ++i) {
+                        auto* neighbor = rectangle->GetLeftNeighbor(i);
+                        if (neighbor->GetRegion() != region && !allowed(neighbor)) left = false;
+                    }
+                for (auto* other : rectangles) {
+                    if (other->GetRegion() == region) continue;
+                    for (int i=0; i<other->CountLeftNeighbors(); ++i)
+                        if (other->GetLeftNeighbor(i)->GetRegion() == region && !allowed(other)) right = false;
                 }
+                if (!left && !right) return false;
             }
         }
-    }
+        return true;
+    };
+    std::function<bool(size_t)> assign = [&](size_t index) {
+        if (++nodes > 20000) return false;
+        int remaining = 0;
+        for (size_t i=index; i<availableRegions.size(); ++i) remaining += availableRegions[i]->Area();
+        int deficit = 0;
+        for (int mechanic : enabled) deficit += std::max(0, minimum[mechanic]-assignedArea[mechanic]);
+        if (deficit > remaining) return false;
+        if (index == availableRegions.size()) return deficit == 0 && partialValid();
+        auto choices = enabled;
+        std::shuffle(choices.begin(), choices.end(), rng);
+        auto* region = availableRegions[index];
+        for (int mechanic : choices) {
+            region->SetMechanicLayer1(m[mechanic]);
+            assignedArea[mechanic] += region->Area();
+            if (partialValid() && assign(index+1)) return true;
+            assignedArea[mechanic] -= region->Area();
+        }
+        region->SetMechanicLayer1("-1");
+        return false;
+    };
+    if (!assign(0)) return false;
 
-    //Mu
-    int muArea{};
-
-    if (Mu)
-    {
-        for (auto* region : muCandidates)
-        {
-            //-------------------
-            //Mu
-            //-------------------
-
-            bool select = randomInt(0, 1) == 0 ? false : true;
-
-            if (select)
-            {
-                if (muArea + region->Area() <= largestMuArea)
-                {
-                    region->SetMechanicLayer2(m.at(7));
-                    muArea += region->Area();
+    // Subset-sum chooses overlays that satisfy their area bounds.
+    auto overlay = [&](bool enabledFlag, int mechanic, int minimumArea, int maximumArea) {
+        if (!enabledFlag) return true;
+        std::vector<Region*> candidates;
+        for (auto* region : upDownLayer)
+            if (mechanic == 6 ? isMdCandidate(region) : isMuCandidate(region)) candidates.push_back(region);
+        std::shuffle(candidates.begin(), candidates.end(), rng);
+        std::vector<int> previous(maximumArea+1, -1), chosen(maximumArea+1, -1);
+        previous[0] = 0;
+        for (int i=0; i<static_cast<int>(candidates.size()); ++i) {
+            int area = candidates[i]->Area();
+            for (int sum=maximumArea; sum>=area; --sum)
+                if (previous[sum] == -1 && previous[sum-area] != -1) {
+                    previous[sum] = sum-area;
+                    chosen[sum] = i;
                 }
-            }
         }
-    }
-
-    // ------------------------------------------------
-    // Make sure every enabled mechanic exists
-    // ------------------------------------------------
-
-    bool m2Valid = !M2;
-    bool m3Valid = !M3;
-    bool m4Valid = !M4;
-    bool m5Valid = !M5;
-    bool mdValid = !Md;
-    bool muValid = !Mu;
-
-    int m2Area{};
-    int m3Area{};
-    int m4Area{};
-    int m5Area{};
-
-    for (auto* region : regions)
-    {
-        std::string mechanic =
-            region->GetMechanicLayer1();
-
-        if (mechanic == m.at(2))
-            m2Area += region->Area();
-
-        if (mechanic == m.at(3))
-            m3Area += region->Area();
-
-        if (mechanic == m.at(4))
-            m4Area += region->Area();
-
-        if (mechanic == m.at(5))
-            m5Area += region->Area();
-    }
-
-    if (M2 && m2Area >= smallestM2Area)
-        m2Valid = true;
-
-    if (M3 && m3Area >= smallestM3Area)
-        m3Valid = true;
-
-    if (M4 && m4Area >= smallestM4Area)
-        m4Valid = true;
-
-    if (M5 && m5Area >= smallestM5Area)
-        m5Valid = true;
-
-    if (Md && mdArea >= smallestMdArea)
-        mdValid = true;
-
-    if (Mu && muArea >= smallestMuArea)
-        muValid = true;
-
-
-    return
-        m2Valid &&
-        m3Valid &&
-        m4Valid &&
-        m5Valid &&
-        mdValid &&
-        muValid;
+        std::vector<int> totals;
+        for (int sum=minimumArea; sum<=maximumArea; ++sum) if (previous[sum] != -1) totals.push_back(sum);
+        if (totals.empty()) return false;
+        int sum = totals[randomInt(0, static_cast<int>(totals.size())-1)];
+        while (sum > 0) {
+            auto* region = candidates[chosen[sum]];
+            if (mechanic == 6) region->SetMechanicLayer0(m[6]);
+            else region->SetMechanicLayer2(m[7]);
+            sum = previous[sum];
+        }
+        return true;
+    };
+    return overlay(Md, 6, smallestMdArea, largestMdArea) &&
+        overlay(Mu, 7, smallestMuArea, largestMuArea);
 }
 
-void Board::LevelGenerate(int RectangleCount, int ColorCount,bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
+void Board::LevelGenerate(int RectangleCount, int ColorCount, bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu, bool VerticalSymmetry)
 {
-    resetRectangle();
-
-    for (int n = 0; n < RectangleCount - 1; n++)
-    {
-        for (int i = 0; i < tryLimit; i++)
-        {
-            Rectangle* newRecangle = rectangles.at(randomInt(0, rectangles.size() - 1))->Split();
-            if (newRecangle != nullptr)
-            {
-                rectangles.push_back(newRecangle);
-                break;
+    const int area = width * height;
+    const int requiredRegions = 1 + int(M0) + int(M2) + int(M3) + int(M4) + int(M5);
+    const int requiredArea = smallestM1Area + (M0 ? smallestM0Area : 0) +
+        (M2 ? smallestM2Area : 0) + (M3 ? smallestM3Area : 0) +
+        (M4 ? smallestM4Area : 0) + (M5 ? smallestM5Area : 0);
+    if (RectangleCount < 1 || RectangleCount > area || ColorCount < requiredRegions ||
+        ColorCount > RectangleCount || requiredArea > area)
+        throw std::invalid_argument("Rectangle/color counts cannot satisfy the selected mechanics.");
+    if (!M0 && !M2 && !M3 && !M4 && !M5 && area > largestM1Area)
+        throw std::invalid_argument("Enable a mechanic to cover cells outside M1.");
+    // An even-width M5 rectangle cannot straddle an odd-width board's axis.
+    if (VerticalSymmetry && width % 2 != 0 && M5 && ColorCount < requiredRegions + 1)
+        throw std::invalid_argument("Vertical symmetry with M5 on a 9-column board requires an extra region for its mirror.");
+    for (int attempt=0; attempt<tryLimit; ++attempt) {
+        resetRectangle();
+        if (VerticalSymmetry) {
+            if (!splitSymmetric(RectangleCount)) continue;
+            // A symmetric partition can admit many different connected region
+            // groupings. Explore those before discarding its geometry.
+            for (int grouping=0; grouping<16; ++grouping) {
+                if (!meshSymmetric(ColorCount)) continue;
+                if (paintSymmetric(M0, M2, M3, M4, M5, Md, Mu)) return;
             }
+            continue;
         }
-        for (auto* rectangle : rectangles)
-        {
-            rectangle->FindNeigbers();
+        while (static_cast<int>(rectangles.size()) < RectangleCount) {
+            std::vector<Rectangle*> splittable;
+            for (auto* rectangle : rectangles) if (rectangle->Area()>1) splittable.push_back(rectangle);
+            if (splittable.empty()) throw std::logic_error("No rectangle can be split.");
+            auto* rectangle = splittable[randomInt(0, static_cast<int>(splittable.size())-1)];
+            rectangles.push_back(rectangle->Split());
         }
+        for (auto* rectangle : rectangles) rectangle->FindNeigbers();
+        mesh(ColorCount);
+        if (paint(M0, M2, M3, M4, M5, Md, Mu)) return;
     }
-
-    mesh(ColorCount);
-
-    int i{};
-
-    for (; i < tryLimit; i++)
-    {
-        if (paint(M0, M2, M3, M4, M5, Md, Mu)) break;
-    }
-
-    if (i == tryLimit) LevelGenerate(RectangleCount, ColorCount,M0, M2, M3, M4, M5, Md, Mu);
+    throw std::runtime_error(VerticalSymmetry
+        ? "Symmetric generation attempt limit reached; try more rectangles/regions or different mechanics."
+        : "Generation attempt limit reached; try different counts or mechanics.");
 }
+
 
 
 bool Board::isM2Candidate(Region* region)
@@ -1354,3 +1120,233 @@ bool Board::isMdCandidate(Region* region)
 {
     return region->GetMechanicLayer1() != m.at(4);
 }
+
+bool Board::splitSymmetric(int count)
+{
+    struct Box { int x, y, w, h; };
+    std::vector<Box> boxes{{0, 0, width, height}};
+    while (static_cast<int>(boxes.size()) < count) {
+        std::vector<std::vector<Box>> choices;
+        for (int i=0; i<static_cast<int>(boxes.size()); ++i) {
+            const auto a = boxes[i];
+            int mirror = -1;
+            for (int j=i; j<static_cast<int>(boxes.size()); ++j)
+                if (boxes[j].x == width-a.x-a.w && boxes[j].y == a.y &&
+                    boxes[j].w == a.w && boxes[j].h == a.h) { mirror=j; break; }
+            if (mirror < 0) continue; // This pair was already visited.
+            auto add = [&](std::vector<Box> pieces) {
+                std::vector<Box> next;
+                for (int j=0; j<static_cast<int>(boxes.size()); ++j)
+                    if (j!=i && j!=mirror) next.push_back(boxes[j]);
+                next.insert(next.end(), pieces.begin(), pieces.end());
+                if (static_cast<int>(next.size())<=count) choices.push_back(std::move(next));
+            };
+            for (int cut=1; cut<a.h; ++cut) {
+                std::vector<Box> pieces{{a.x,a.y,a.w,cut},{a.x,a.y+cut,a.w,a.h-cut}};
+                if (mirror!=i) {
+                    const auto b=boxes[mirror];
+                    pieces.push_back({b.x,b.y,b.w,cut});
+                    pieces.push_back({b.x,b.y+cut,b.w,b.h-cut});
+                }
+                add(std::move(pieces));
+            }
+            if (mirror==i) {
+                for (int cut=1; cut<=a.w/2; ++cut) {
+                    std::vector<Box> pieces{{a.x,a.y,cut,a.h},{a.x+a.w-cut,a.y,cut,a.h}};
+                    if (a.w>2*cut) pieces.push_back({a.x+cut,a.y,a.w-2*cut,a.h});
+                    add(std::move(pieces));
+                }
+            } else {
+                const auto b=boxes[mirror];
+                for (int cut=1; cut<a.w; ++cut)
+                    add({{a.x,a.y,cut,a.h},{a.x+cut,a.y,a.w-cut,a.h},
+                         {b.x,b.y,b.w-cut,b.h},{b.x+b.w-cut,b.y,cut,b.h}});
+            }
+        }
+        if (choices.empty()) return false;
+        boxes=std::move(choices[randomInt(0,static_cast<int>(choices.size())-1)]);
+    }
+    auto* original=rectangles.front();
+    // Board's cell index and neighbor pointers stay intact.
+    original->GetCells()->clear();
+    delete original;
+    rectangles.clear();
+    for (const auto& box:boxes) {
+        auto* group=new std::vector<Cell*>;
+        for (int y=box.y; y<box.y+box.h; ++y)
+            for (int x=box.x; x<box.x+box.w; ++x) group->push_back(getCell(x,y));
+        rectangles.push_back(new Rectangle(group));
+    }
+    for (auto* rectangle:rectangles) rectangle->FindNeigbers();
+    return true;
+}
+
+bool Board::meshSymmetric(int count)
+{
+    const int n=static_cast<int>(rectangles.size());
+    std::vector<int> mirror(n), labels(n);
+    std::vector<std::pair<int,int>> edges;
+    auto indexOf=[&](Rectangle* r) {
+        return static_cast<int>(std::find(rectangles.begin(),rectangles.end(),r)-rectangles.begin());
+    };
+    for (int i=0;i<n;++i) {
+        labels[i]=i;
+        auto* r=rectangles[i];
+        mirror[i]=indexOf(getCell(width-1-r->BaseCell()->X(),r->BaseCell()->Y())->GetRectangle());
+        for(int j=0;j<r->CountNeighbors();++j) edges.push_back({i,indexOf(r->GetNeighbor(j))});
+    }
+    auto distinct=[](std::vector<int> values) {
+        std::sort(values.begin(),values.end());
+        return static_cast<int>(std::unique(values.begin(),values.end())-values.begin());
+    };
+    int remaining=n;
+    while(remaining>count) {
+        std::vector<std::vector<int>> choices;
+        for(const auto& edge:edges) {
+            auto trial=labels;
+            auto unite=[&](int a,int b) {
+                int from=trial[b],to=trial[a];
+                for(auto& label:trial) if(label==from) label=to;
+            };
+            unite(edge.first,edge.second);
+            unite(mirror[edge.first],mirror[edge.second]);
+            int after=distinct(trial);
+            if(after<remaining && after>=count) choices.push_back(std::move(trial));
+        }
+        if(choices.empty()) return false;
+        labels=std::move(choices[randomInt(0,static_cast<int>(choices.size())-1)]);
+        remaining=distinct(labels);
+    }
+    for(int i=0;i<n;++i) rectangles[i]->SetColor(labels[i]);
+    findRegion();
+    return true;
+}
+
+bool Board::paintSymmetric(bool M0,bool M2,bool M3,bool M4,bool M5,bool Md,bool Mu)
+{
+    // Each unit is either a self-mirrored region or two reflected regions.
+    // Paired regions remain separate, connected regions in the hierarchy.
+    std::vector<std::vector<Region*>> units;
+    std::vector<Region*> visited;
+    for(auto* region:regions) {
+        region->SetMechanicLayer0(m[0]);
+        region->SetMechanicLayer1("-1");
+        region->SetMechanicLayer2(m[0]);
+    }
+    for(auto* region:regions) {
+        if(std::find(visited.begin(),visited.end(),region)!=visited.end()) continue;
+        auto* cell=region->GetConvex().front()->BaseCell();
+        auto* mirror=getCell(width-1-cell->X(),cell->Y())->GetRectangle()->GetRegion();
+        units.push_back({region});
+        visited.push_back(region);
+        if(mirror!=region) {units.back().push_back(mirror);visited.push_back(mirror);}
+    }
+    auto top=[](const std::vector<Region*>& unit) {
+        int y=100;
+        for(auto* region:unit) for(auto* r:region->GetConvex()) y=std::min(y,r->BaseCell()->Y());
+        return y;
+    };
+    std::stable_sort(units.begin(),units.end(),[&](const auto& a,const auto& b){return top(a)<top(b);});
+    std::vector<int> enabled{1};
+    if(M0) enabled.push_back(0);
+    if(M2) enabled.push_back(2);
+    if(M3) enabled.push_back(3);
+    if(M4) enabled.push_back(4);
+    if(M5) enabled.push_back(5);
+    if(units.size()<enabled.size()) return false;
+    const int minimum[]={smallestM0Area,smallestM1Area,smallestM2Area,smallestM3Area,smallestM4Area,smallestM5Area};
+    std::vector<int> areas;
+    for(const auto& unit:units) {int area=0;for(auto* r:unit) area+=r->Area();areas.push_back(area);}
+    auto set=[&](size_t index,int mechanic) {
+        for(auto* region:units[index]) region->SetMechanicLayer1(mechanic<0 ? "-1" : m[mechanic]);
+    };
+    auto valid=[&]() {
+        for(auto* region:regions) {
+            const auto value=region->GetMechanicLayer1();
+            if(value=="-1" || value==m[0]) continue;
+            if(value==m[5] && !region->IsEvenRectangle()) return false;
+            if(value==m[4]) {
+                bool left=true,right=true;
+                auto allowed=[&](Rectangle* r) {
+                    const auto other=r->GetMechanicLayer1();
+                    return other=="-1" || other==m[0] || other==m[4];
+                };
+                for(auto* r:region->GetConvex()) for(int i=0;i<r->CountLeftNeighbors();++i) {
+                    auto* neighbor=r->GetLeftNeighbor(i);
+                    if(neighbor->GetRegion()!=region && !allowed(neighbor)) left=false;
+                }
+                for(auto* r:rectangles) if(r->GetRegion()!=region)
+                    for(int i=0;i<r->CountLeftNeighbors();++i)
+                        if(r->GetLeftNeighbor(i)->GetRegion()==region && !allowed(r)) right=false;
+                if(!left && !right) return false;
+            } else {
+                for(auto* r:region->GetConvex()) for(int i=0;i<r->CountTopNeighbors();++i) {
+                    auto* neighbor=r->GetTopNeighbor(i);
+                    if(neighbor->GetRegion()==region) continue;
+                    const auto other=neighbor->GetMechanicLayer1();
+                    if(other=="-1" || other==m[0] || other==m[1]) continue;
+                    if(value!=m[1] && other==m[2]) continue;
+                    if((value==m[3] || value==m[5]) && (other==m[3] || other==m[5])) continue;
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+    // Overlay subsets also operate on whole reflection pairs.
+    auto overlay=[&](bool use,int mechanic,int lower,int upper) {
+        if(!use) return true;
+        std::vector<int> candidates;
+        for(int i=0;i<static_cast<int>(units.size());++i) {
+            bool accepts=true;
+            for(auto* region:units[i])
+                if(region->GetMechanicLayer1()==m[0] ||
+                    !(mechanic==6 ? isMdCandidate(region) : isMuCandidate(region))) accepts=false;
+            if(accepts) candidates.push_back(i);
+        }
+        std::shuffle(candidates.begin(),candidates.end(),rng);
+        std::vector<int> previous(upper+1,-1),chosen(upper+1,-1);
+        previous[0]=0;
+        for(int i:candidates) for(int sum=upper;sum>=areas[i];--sum)
+            if(previous[sum]<0 && previous[sum-areas[i]]>=0) {previous[sum]=sum-areas[i];chosen[sum]=i;}
+        std::vector<int> totals;
+        for(int sum=lower;sum<=upper;++sum) if(previous[sum]>=0) totals.push_back(sum);
+        if(totals.empty()) return false;
+        int sum=totals[randomInt(0,static_cast<int>(totals.size())-1)];
+        while(sum>0) {
+            for(auto* region:units[chosen[sum]])
+                if(mechanic==6) region->SetMechanicLayer0(m[6]); else region->SetMechanicLayer2(m[7]);
+            sum=previous[sum];
+        }
+        return true;
+    };
+    int assigned[6]={},nodes=0;
+    std::function<bool(size_t)> search=[&](size_t index) {
+        if(++nodes>20000) return false;
+        int remaining=0,deficit=0,missing=0;
+        for(size_t i=index;i<areas.size();++i) remaining+=areas[i];
+        for(int mechanic:enabled) {
+            deficit+=std::max(0,minimum[mechanic]-assigned[mechanic]);
+            if(assigned[mechanic]==0) ++missing;
+        }
+        if(deficit>remaining || missing>static_cast<int>(units.size()-index)) return false;
+        if(index==units.size()) {
+            if(deficit!=0 || !valid()) return false;
+            for(auto* region:regions) {region->SetMechanicLayer0(m[0]);region->SetMechanicLayer2(m[0]);}
+            return overlay(Md,6,smallestMdArea,largestMdArea) && overlay(Mu,7,smallestMuArea,largestMuArea);
+        }
+        auto choices=enabled;
+        std::shuffle(choices.begin(),choices.end(),rng);
+        for(int mechanic:choices) {
+            if(mechanic==1 && assigned[1]+areas[index]>largestM1Area) continue;
+            set(index,mechanic);assigned[mechanic]+=areas[index];
+            if(valid() && search(index+1)) return true;
+            assigned[mechanic]-=areas[index];
+        }
+        set(index,-1);
+        return false;
+    };
+    return search(0);
+}
+
+

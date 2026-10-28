@@ -39,17 +39,29 @@ Rectangle::~Rectangle()
 
 void Rectangle::ExitCell(Cell* const cell)
 {
-	for (int i = 0; i < cells->size(); i++)
-	{
-		if (cells->at(i)->X() == cell->X() && cells->at(i)->Y() == cell->Y()) cells->erase(cells->begin() +  i);
-	}
+	auto it = std::find(cells->begin(), cells->end(), cell);
+	if (it == cells->end()) return;
+	cells->erase(it);
+	cell->ChangeRectangle(nullptr);
 	sortCells();
+	recalculateSize();
+	FindNeigbers();
 }
 
 void Rectangle::AddCell(Cell* cell)
 {
+	if (!cell) throw std::invalid_argument("Cannot add a null cell.");
+	if (std::find(cells->begin(), cells->end(), cell) != cells->end()) return;
+	if (cell->GetRectangle() != nullptr)
+		throw std::invalid_argument("Detach the cell from its rectangle before adding it.");
+	for (auto* existing : *cells)
+		if (existing->X() == cell->X() && existing->Y() == cell->Y())
+			throw std::invalid_argument("Duplicate cell coordinates.");
 	cells->push_back(cell);
+	cell->ChangeRectangle(this);
 	sortCells();
+	recalculateSize();
+	FindNeigbers();
 }
 
 std::ostream& Rectangle::Layer0(std::ostream& Output)
@@ -109,8 +121,15 @@ std::vector<Cell*>* Rectangle::GetCells()
 
 void Rectangle::recalculateSize()
 {
-	width = cells->at(cells->size() - 1)->X() - cells->at(0)->X() + 1;
-	height = cells->at(cells->size() - 1)->Y() - cells->at(0)->Y() + 1;
+	if (cells->empty()) { width = height = 0; return; }
+	int minX = cells->front()->X(), maxX = minX;
+	int minY = cells->front()->Y(), maxY = minY;
+	for (auto* cell : *cells) {
+		minX = std::min(minX, cell->X()); maxX = std::max(maxX, cell->X());
+		minY = std::min(minY, cell->Y()); maxY = std::max(maxY, cell->Y());
+	}
+	width = maxX - minX + 1;
+	height = maxY - minY + 1;
 }
 
 Rectangle* Rectangle::GetNeighbor(int number) const
@@ -219,7 +238,12 @@ int Rectangle::Area() const {
 
 Cell* Rectangle::getCell(int X, int Y)
 {
-	return cells->at(X + Y * width);
+	if (X < 0 || Y < 0 || X >= width || Y >= height || cells->empty())
+		throw std::out_of_range("Cell coordinates outside rectangle.");
+	int minX = cells->front()->X(), minY = cells->front()->Y();
+	for (auto* cell : *cells) { minX = std::min(minX, cell->X()); minY = std::min(minY, cell->Y()); }
+	for (auto* cell : *cells) if (cell->X() == minX + X && cell->Y() == minY + Y) return cell;
+	throw std::out_of_range("Cell is missing from rectangle.");
 }
 
 const std::vector<Cell*>* Rectangle::getCells() const
@@ -229,6 +253,8 @@ const std::vector<Cell*>* Rectangle::getCells() const
 
 Rectangle* Rectangle::Split()
 {
+	if (Area() != width * height)
+		throw std::logic_error("Cannot split a rectangle with missing cells.");
 	Random rng{};
 
 	const bool canSplitVertical =

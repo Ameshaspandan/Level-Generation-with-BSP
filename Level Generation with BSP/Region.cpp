@@ -2,16 +2,19 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 #include "Cell.h"
 
 using Convex = std::vector<Rectangle*>;
 
-Region::Region() : convex{}, area{}
+Region::Region() : convex{}
 {
 }
 
 Region::~Region()
 {
+	for (auto* rectangle : convex)
+		if (rectangle->GetRegion() == this) rectangle->SetRegion(nullptr);
 }
 
 const Convex& Region::GetConvex() const
@@ -21,8 +24,12 @@ const Convex& Region::GetConvex() const
 
 void Region::AddRectangle(Rectangle* rectangle)
 {
+	if (!rectangle) throw std::invalid_argument("Cannot add a null rectangle.");
+	if (std::find(convex.begin(), convex.end(), rectangle) != convex.end()) return;
+	if (rectangle->GetRegion() != nullptr && rectangle->GetRegion() != this)
+		throw std::invalid_argument("Remove the rectangle from its previous region first.");
 	convex.push_back(rectangle);
-	area += rectangle->Area();
+	rectangle->SetRegion(this);
 }
 
 bool Region::RemoveRecangle(Rectangle* rectangle)
@@ -31,7 +38,7 @@ bool Region::RemoveRecangle(Rectangle* rectangle)
 	if (search != convex.end())
 	{
 		convex.erase(search);
-		area -= rectangle->Area();
+		rectangle->SetRegion(nullptr);
 		return true;
 	}
 	return false;

@@ -9,12 +9,13 @@ class Region
 {
 	using Convex = std::vector<Rectangle*>;
 
-	int area;
 private:
 	Convex convex;
 
 	bool isRectangle(std::vector<Cell*> cells);
 public:
+	Region(const Region&) = delete;
+	Region& operator=(const Region&) = delete;
 	Region();
 	~Region();
 
@@ -32,7 +33,7 @@ public:
 
 	int Size();
 
-	int Area() { return area; };
+	int Area() { int total = 0; for (auto* rectangle : convex) total += rectangle->Area(); return total; }
 
 	bool IsEvenRectangle();
 };

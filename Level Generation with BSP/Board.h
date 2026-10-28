@@ -48,6 +48,9 @@ private:
 	std::vector<std::string> m{ M0, M1, M2, M3, M4, M5, Md, Mu };
 
 	void mesh(int RectangleCount);
+	bool splitSymmetric(int RectangleCount);
+	bool meshSymmetric(int ColorCount);
+	bool paintSymmetric(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu);
 	bool paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu);
 
 	void rectangleSort()
@@ -106,10 +109,15 @@ private:
 	}
 
 public:
+    static bool IsSupportedSize(int width, int height) {
+        return (width == 9 && height >= 9 && height <= 11) || (width == 8 && height == 11);
+    }
+    Board(const Board&) = delete;
+    Board& operator=(const Board&) = delete;
 	Board(int Width, int Height);
 	~Board();
 
-	void LevelGenerate(int RectangleCount, int ColorCount, bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu);
+	void LevelGenerate(int RectangleCount, int ColorCount, bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu, bool VerticalSymmetry = false);
 
 	//void TestAllRectangleNeighbors();
 
