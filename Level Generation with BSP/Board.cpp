@@ -692,16 +692,16 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
         if (availableRegions.empty())
             return false;
 
-        int m0Area = availableRegions.at(0)->Area();
+        int smallestRegionArea = availableRegions.at(0)->Area();
         int indexM0 = 0;
 
         //index starts 1 that scape smallest region
         for (int i = 1; i < static_cast<int>(availableRegions.size()); i++)
         {
-            if (availableRegions.at(i)->Area() < m0Area)
+            if (availableRegions.at(i)->Area() < smallestRegionArea)
             {
                 indexM0 = i;
-                m0Area = availableRegions.at(i)->Area();
+                smallestRegionArea = availableRegions.at(i)->Area();
             }
         }
 
