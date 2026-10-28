@@ -35,7 +35,7 @@ private:
 	const int largestMdArea = 50;
 	const int largestMuArea = 50;
 
-	const std::string M0 = "0";
+	const std::string M0 = "#";
 	const std::string M1 = "A";
 	const std::string M2 = "B";
 	const std::string M3 = "C";

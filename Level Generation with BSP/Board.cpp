@@ -131,31 +131,83 @@ std::ostream& operator<<(std::ostream& Output, const Board& board)
     const int width = board.width;
     const int height = board.height;
 
+    // Board limits:
+    // width  = 1..9
+    // height = 1..11
     if (width < 1 || width > 9 ||
-        height < 1 || height > 9)
+        height < 1 || height > 11)
     {
         throw std::runtime_error(
-            "Compressed board format only supports width/height from 1 to 9."
+            "Compressed board format supports "
+            "width 1..9 and height 1..11."
         );
     }
 
     const int cellCount = width * height;
 
-    auto encodeLayer = [&](auto getLayerValue) -> std::string
+
+    // =========================================================
+    // Encode one layer
+    //
+    // Format:
+    //
+    // mechanic + width + height
+    //
+    // Examples:
+    //
+    // A34
+    //     A = mechanic
+    //     3 = width
+    //     4 = height
+    //
+    // A310
+    //     A  = mechanic
+    //     3  = width
+    //     10 = height
+    //
+    // AA211
+    //     AA = mechanic
+    //     2  = width
+    //     11 = height
+    //
+    // *911
+    //     *  = empty
+    //     9  = width
+    //     11 = height
+    // =========================================================
+
+    auto encodeLayer =
+        [&](auto getLayerValue) -> std::string
         {
-            // IMPORTANT:
-            // Mechanics can be:
-            // 0, A, B, C, D, E, AA, AAA
+            // -----------------------------------------------------
+            // Cache mechanic of every cell.
             //
-            // Therefore this must be std::string, not char.
-            std::vector<std::string> values(cellCount);
+            // Mechanics internally may be:
+            //
+            // 0
+            // A
+            // B
+            // C
+            // D
+            // E
+            // AA
+            // AAA
+            //
+            // "0" will be converted to "#" when serialized.
+            // -----------------------------------------------------
+
+            std::vector<std::string> values(
+                cellCount
+            );
 
             for (int y = 0; y < height; ++y)
             {
                 for (int x = 0; x < width; ++x)
                 {
                     std::string value =
-                        getLayerValue(board.getCell(x, y));
+                        getLayerValue(
+                            board.getCell(x, y)
+                        );
 
                     if (value.empty())
                     {
@@ -164,131 +216,251 @@ std::ostream& operator<<(std::ostream& Output, const Board& board)
                         );
                     }
 
-                    values[y * width + x] = value;
+                    // Validate mechanic.
+                    //if (value != "0" &&
+                    //    value != "#" &&
+                    //    value != "A" &&
+                    //    value != "B" &&
+                    //    value != "C" &&
+                    //    value != "D" &&
+                    //    value != "E" &&
+                    //    value != "AA" &&
+                    //    value != "AAA")
+                    //{
+                    //    throw std::runtime_error(
+                    //        "Invalid mechanic in board: " +
+                    //        value
+                    //    );
+                    //}
+
+                    values[
+                        y * width + x
+                    ] = value;
                 }
             }
 
-            std::vector<unsigned char> used(cellCount, 0);
+
+            // -----------------------------------------------------
+            // Keeps track of cells already represented by
+            // rectangles.
+            // -----------------------------------------------------
+
+            std::vector<unsigned char> used(
+                cellCount,
+                0
+            );
+
 
             std::string result;
 
-            // Just an estimate; strings like AAA use more than 3 chars.
-            result.reserve(cellCount * 4);
+            // Estimate only.
+            result.reserve(
+                cellCount * 5
+            );
+
 
             int cursor = 0;
+
 
             while (cursor < cellCount)
             {
                 // -------------------------------------------------
                 // Find first unused cell.
+                //
+                // Row-major:
+                //
+                // left -> right
+                // top  -> bottom
                 // -------------------------------------------------
-                while (cursor < cellCount && used[cursor])
+
+                while (
+                    cursor < cellCount &&
+                    used[cursor]
+                    )
                 {
                     ++cursor;
                 }
 
+
                 if (cursor == cellCount)
                     break;
 
-                const int startX = cursor % width;
-                const int startY = cursor / width;
+
+                const int startX =
+                    cursor % width;
+
+                const int startY =
+                    cursor / width;
+
 
                 const std::string& value =
                     values[cursor];
+
+
+                // -------------------------------------------------
+                // Find largest rectangle of the same mechanic
+                // beginning at this first unused cell.
+                // -------------------------------------------------
 
                 int bestWidth = 1;
                 int bestHeight = 1;
                 int bestArea = 1;
 
-                // Maximum possible width for current height.
-                int maxWidth = width - startX;
 
-                // -------------------------------------------------
-                // Find largest rectangle starting at first
-                // unused cell containing the same mechanic.
-                // -------------------------------------------------
-                for (int rectHeight = 1;
+                int maxWidth =
+                    width - startX;
+
+
+                for (
+                    int rectHeight = 1;
                     startY + rectHeight <= height;
-                    ++rectHeight)
+                    ++rectHeight
+                    )
                 {
                     const int rowStart =
-                        (startY + rectHeight - 1) * width + startX;
+                        (
+                            startY +
+                            rectHeight -
+                            1
+                            )
+                        * width
+                        + startX;
+
 
                     int rowWidth = 0;
 
-                    while (rowWidth < maxWidth)
+
+                    while (
+                        rowWidth < maxWidth
+                        )
                     {
                         const int index =
-                            rowStart + rowWidth;
+                            rowStart +
+                            rowWidth;
 
-                        if (used[index] ||
-                            values[index] != value)
+
+                        if (
+                            used[index] ||
+                            values[index] != value
+                            )
                         {
                             break;
                         }
 
+
                         ++rowWidth;
                     }
 
+
+                    // Any further row cannot make the
+                    // rectangle wider than this.
                     maxWidth = rowWidth;
+
 
                     if (maxWidth == 0)
                         break;
 
+
                     const int area =
-                        maxWidth * rectHeight;
+                        maxWidth *
+                        rectHeight;
+
 
                     if (area > bestArea)
                     {
-                        bestArea = area;
-                        bestWidth = maxWidth;
-                        bestHeight = rectHeight;
+                        bestArea =
+                            area;
+
+                        bestWidth =
+                            maxWidth;
+
+                        bestHeight =
+                            rectHeight;
                     }
                 }
 
+
                 // -------------------------------------------------
-                // Mark selected rectangle as used.
+                // Mark rectangle as used.
                 // -------------------------------------------------
-                for (int y = startY;
+
+                for (
+                    int y = startY;
                     y < startY + bestHeight;
-                    ++y)
+                    ++y
+                    )
                 {
                     const int rowStart =
-                        y * width + startX;
+                        y * width +
+                        startX;
 
-                    for (int x = 0;
+
+                    for (
+                        int x = 0;
                         x < bestWidth;
-                        ++x)
+                        ++x
+                        )
                     {
-                        used[rowStart + x] = 1;
+                        used[
+                            rowStart + x
+                        ] = 1;
                     }
                 }
 
+
                 // -------------------------------------------------
-                // mechanic + width + height
+                // Serialize mechanic.
                 //
-                // Examples:
+                // Internal:
+                //     0
                 //
-                // A34
-                // AA21
-                // AAA13
-                // 099
+                // Stored:
+                //     #
                 // -------------------------------------------------
                 result += value;
 
-                result +=
-                    static_cast<char>('0' + bestWidth);
+
+                // -------------------------------------------------
+                // Width
+                //
+                // Always exactly one digit: 1..9
+                // -------------------------------------------------
 
                 result +=
-                    static_cast<char>('0' + bestHeight);
+                    std::to_string(
+                        bestWidth
+                    );
+
+
+                // -------------------------------------------------
+                // Height
+                //
+                // 1..9:
+                //
+                //     4
+                //
+                // 10..11:
+                //
+                //     10
+                //     11
+                //
+                // std::to_string() gives exactly the format
+                // we want.
+                // -------------------------------------------------
+
+                result +=
+                    std::to_string(
+                        bestHeight
+                    );
             }
+
 
             return result;
         };
 
 
     // =========================================================
-    // WIDTH x HEIGHT
+    // Board size
     // =========================================================
 
     Output
@@ -502,9 +674,9 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
 {
     for (auto* region : regions)
     {
-        region->SetMechanicLayer0("0");
+        region->SetMechanicLayer0(m.at(0));
         region->SetMechanicLayer1("-1");
-        region->SetMechanicLayer2("0");
+        region->SetMechanicLayer2(m.at(0));
     }
 
     std::vector<Region*> availableRegions{ regions };
@@ -520,15 +692,16 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
         if (availableRegions.empty())
             return false;
 
-        int smallestArea = availableRegions.at(0)->Area();
+        int m0Area = availableRegions.at(0)->Area();
         int indexM0 = 0;
 
+        //index starts 1 that scape smallest region
         for (int i = 1; i < static_cast<int>(availableRegions.size()); i++)
         {
-            if (availableRegions.at(i)->Area() < smallestArea)
+            if (availableRegions.at(i)->Area() < m0Area)
             {
                 indexM0 = i;
-                smallestArea = availableRegions.at(i)->Area();
+                m0Area = availableRegions.at(i)->Area();
             }
         }
 
@@ -579,8 +752,8 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
                     std::string mechanic =
                         neighbor->GetMechanicLayer1();
 
-                    if (mechanic != "0" &&
-                        mechanic != "A")
+                    if (mechanic != m.at(0) &&
+                        mechanic != m.at(1))
                     {
                         valid = false;
                         break;
