@@ -943,9 +943,7 @@ void Board::LevelGenerate(int RectangleCount, int ColorCount, bool M0, bool M2, 
         mesh(ColorCount);
         if (paint(M0, M2, M3, M4, M5, Md, Mu)) return;
     }
-    throw std::runtime_error(VerticalSymmetry
-        ? "Symmetric generation attempt limit reached; try more rectangles/regions or different mechanics."
-        : "Generation attempt limit reached; try different counts or mechanics.");
+    LevelGenerate(RectangleCount, ColorCount, M0, M2, M3, M4, M5, Md, Mu, VerticalSymmetry);
 }
 
 

@@ -117,7 +117,7 @@ public:
 	Board(int Width, int Height);
 	~Board();
 
-	void LevelGenerate(int RectangleCount, int ColorCount, bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu, bool VerticalSymmetry = false);
+	void LevelGenerate(int RectangleCount, int ColorCount, bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu, bool VerticalSymmetry);
 
 	//void TestAllRectangleNeighbors();
 
