@@ -23,6 +23,7 @@ private:
 	
 
 	const int smallestM0Area = 5;
+	const int largestM0Area = 10;
 	const int smallestM1Area = 15;
 	const int largestM1Area = 25;
 	const int smallestM2Area = 5;

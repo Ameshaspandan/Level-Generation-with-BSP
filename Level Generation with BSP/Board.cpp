@@ -709,6 +709,12 @@ bool Board::paint(bool M0, bool M2, bool M3, bool M4, bool M5, bool Md, bool Mu)
                 }
             }
 
+            // Preserve smallest-first selection, but never exceed M0's
+            // total board-area limit. A different partition is needed if
+            // even the smallest remaining region does not fit.
+            if (m0Area + smallestRegionArea > largestM0Area)
+                return false;
+
             availableRegions.at(indexM0)->SetMechanicLayer1(m.at(0));
 
             m0Area += availableRegions.at(indexM0)->Area();
@@ -1336,6 +1342,8 @@ bool Board::paintSymmetric(bool M0,bool M2,bool M3,bool M4,bool M5,bool Md,bool 
         auto choices=enabled;
         std::shuffle(choices.begin(),choices.end(),rng);
         for(int mechanic:choices) {
+            // areas[index] includes both regions of a mirrored pair.
+            if(mechanic==0 && assigned[0]+areas[index]>largestM0Area) continue;
             if(mechanic==1 && assigned[1]+areas[index]>largestM1Area) continue;
             set(index,mechanic);assigned[mechanic]+=areas[index];
             if(valid() && search(index+1)) return true;
