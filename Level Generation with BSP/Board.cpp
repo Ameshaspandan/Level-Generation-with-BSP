@@ -1117,7 +1117,7 @@ bool Board::isM3Candidate(Region* region)
 
 bool Board::isMuCandidate(Region* region)
 {
-    return region->GetMechanicLayer1() != m.at(1);
+    return region->GetMechanicLayer1() != m.at(1) && region->GetMechanicLayer1() != m.at(5);
 }
 
 bool Board::isMdCandidate(Region* region)
